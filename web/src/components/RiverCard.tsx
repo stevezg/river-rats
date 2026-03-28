@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { River } from "@/lib/mock-data";
+import type { River } from "@/lib/rivers";
 import DifficultyBadge from "./DifficultyBadge";
 import FlowBadge from "./FlowBadge";
 import { getFlowStatus } from "@/lib/utils";

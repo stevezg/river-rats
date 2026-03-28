@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { trips, rivers } from "@/lib/mock-data";
+import { trips } from "@/lib/mock-data";
+import { getRiverBySlug } from "@/lib/rivers";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import FlowBadge from "@/components/FlowBadge";
 import { formatDate } from "@/lib/utils";
@@ -40,7 +41,7 @@ export default async function TripDetailPage({ params }: Props) {
   const trip = trips.find((t) => t.id === id);
   if (!trip) notFound();
 
-  const river = rivers.find((r) => r.slug === trip.riverSlug);
+  const river = await getRiverBySlug(trip.riverSlug);
   const participants = getParticipants(trip);
   const isFull = trip.spotsRemaining === 0;
 

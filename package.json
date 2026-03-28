@@ -1,5 +1,5 @@
 {
   "name": "riverrats",
   "private": true,
-  "workspaces": ["web", "shared" ]
+  "workspaces": ["web", "shared", "packages/*"]
 }
