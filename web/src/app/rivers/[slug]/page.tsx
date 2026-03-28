@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { rivers, trips } from "@/lib/mock-data";
+import { getRiverBySlug } from "@/lib/rivers";
+import { riversData } from "@/lib/rivers-data";
+import { trips } from "@/lib/mock-data";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import FlowBadge from "@/components/FlowBadge";
 import TripCard from "@/components/TripCard";
@@ -12,12 +14,12 @@ interface Props {
 }
 
 export async function generateStaticParams() {
-  return rivers.map((r) => ({ slug: r.slug }));
+  return riversData.map((r) => ({ slug: r.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const river = rivers.find((r) => r.slug === slug);
+  const river = riversData.find((r) => r.slug === slug);
   if (!river) return { title: "River Not Found" };
   return {
     title: `${river.name} — Class ${river.difficulty} | River Rats`,
@@ -27,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function RiverDetailPage({ params }: Props) {
   const { slug } = await params;
-  const river = rivers.find((r) => r.slug === slug);
+  const river = await getRiverBySlug(slug);
   if (!river) notFound();
 
   const relatedTrips = trips.filter((t) => t.riverSlug === slug);
