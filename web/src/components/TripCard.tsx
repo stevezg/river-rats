@@ -1,11 +1,11 @@
 import Link from "next/link";
-import type { Trip } from "@/lib/mock-data";
+import type { TripSummary } from "@/lib/trip-types";
 import DifficultyBadge from "./DifficultyBadge";
 import FlowBadge from "./FlowBadge";
 import { formatDate } from "@/lib/utils";
 
 interface Props {
-  trip: Trip;
+  trip: TripSummary;
 }
 
 export default function TripCard({ trip }: Props) {

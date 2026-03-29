@@ -71,8 +71,10 @@ export default async function Navbar() {
         {/* Nav Links */}
         <div className="hidden items-center gap-8 md:flex">
           {[
+            { href: "/#features", label: "Features" },
             { href: "/rivers", label: "Rivers" },
             { href: "/trips", label: "Trips" },
+            { href: "/#about", label: "About" },
           ].map(({ href, label }) => (
             <Link
               key={href}
