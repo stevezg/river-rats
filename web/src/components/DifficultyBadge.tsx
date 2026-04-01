@@ -1,14 +1,23 @@
 import { getDifficultyColor, getDifficultyBg } from "@/lib/utils";
-import type { DifficultyClass } from "@/lib/mock-data";
+import type { DifficultyClass } from "@riverrats/shared";
 
 interface Props {
   difficulty: DifficultyClass;
   size?: "sm" | "md" | "lg";
+  inline?: boolean;
 }
 
-export default function DifficultyBadge({ difficulty, size = "md" }: Props) {
+export default function DifficultyBadge({ difficulty, size = "md", inline = false }: Props) {
   const color = getDifficultyColor(difficulty);
   const bg = getDifficultyBg(difficulty);
+
+  if (inline) {
+    return (
+      <span className="text-xs font-medium" style={{ color }}>
+        Class {difficulty}
+      </span>
+    );
+  }
 
   const sizeClasses = {
     sm: "text-xs px-2 py-0.5",

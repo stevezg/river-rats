@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import NavbarSignOut from "@/components/NavbarSignOut";
+import NotificationBell from "@/components/NotificationBell";
 
 function getInitials(name: string | null | undefined): string {
   if (!name) return "?";
@@ -96,7 +97,8 @@ export default async function Navbar() {
 
         {/* Auth area */}
         {user ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <NotificationBell />
             <Link href="/dashboard" className="flex items-center gap-2 group">
               <div
                 className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-[#0F1117] transition-opacity group-hover:opacity-80"

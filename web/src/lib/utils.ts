@@ -1,4 +1,4 @@
-import type { DifficultyClass, FlowTrend } from "./mock-data";
+import type { DifficultyClass, FlowTrend } from "@riverrats/shared";
 
 export function getDifficultyColor(difficulty: DifficultyClass): string {
   switch (difficulty) {

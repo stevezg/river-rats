@@ -37,7 +37,7 @@ export default function RiverCard({ river }: Props) {
       </div>
 
       {/* Flow */}
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col gap-2">
         <FlowBadge
           cfs={river.currentCfs}
           optimalMin={river.optimalMin}
@@ -45,6 +45,14 @@ export default function RiverCard({ river }: Props) {
           trend={river.trend}
           showStatus
         />
+        {river.tempC !== undefined && (
+          <div className="flex items-center gap-1.5 text-xs" style={{ color: "#8B8FA8" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/>
+            </svg>
+            <span>{river.tempC.toFixed(1)}°C / {(river.tempC * 9/5 + 32).toFixed(0)}°F</span>
+          </div>
+        )}
       </div>
 
       {/* Footer */}

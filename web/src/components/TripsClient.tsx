@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import TripCard from "@/components/TripCard";
 import type { TripSummary, DifficultyClass } from "@/lib/trip-types";
+import { createClient } from "@/lib/supabase/client";
 
 const ALL_DIFFICULTIES: DifficultyClass[] = ["III", "III-IV", "IV", "IV-V", "V"];
 
@@ -15,19 +16,108 @@ interface Props {
 export default function TripsClient({ trips, isLoggedIn }: Props) {
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
   const [regionFilter, setRegionFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [liveTrips, setLiveTrips] = useState<TripSummary[]>(trips);
+  const [isLive, setIsLive] = useState(false);
+  const supabase = createClient();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const ALL_STATES = useMemo(
-    () => Array.from(new Set(trips.map((t) => t.state).filter(Boolean))).sort(),
-    [trips]
+    () => Array.from(new Set(liveTrips.map((t) => t.state).filter(Boolean))).sort(),
+    [liveTrips]
   );
 
+  useEffect(() => {
+    setLiveTrips(trips); // sync when server-side data updates
+  }, [trips]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("public:trips:feed")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "trips", filter: "status=eq.open" },
+        (payload) => {
+          const newRow = payload.new as Record<string, unknown>;
+          const newTrip: TripSummary = {
+            id: newRow.id as string,
+            riverSlug: newRow.river_slug as string,
+            riverName: newRow.river_name as string,
+            difficulty: (newRow.min_skill ?? "III") as DifficultyClass,
+            date: newRow.date as string,
+            time: newRow.time as string,
+            meetingPoint: (newRow.meeting_point ?? "") as string,
+            notes: (newRow.notes ?? "") as string,
+            minSkill: (newRow.min_skill ?? "III") as DifficultyClass,
+            creatorName: "New paddler",
+            creatorLevel: "III",
+            totalSpots: (newRow.total_spots as number) ?? 4,
+            spotsRemaining: (newRow.spots_remaining as number) ?? 4,
+            currentCfs: 0,
+            region: "",
+            state: "",
+          };
+          setLiveTrips((prev) => [newTrip, ...prev]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "trips" },
+        (payload) => {
+          const updated = payload.new as Record<string, unknown>;
+          setLiveTrips((prev) =>
+            prev.map((t) =>
+              t.id === updated.id
+                ? {
+                    ...t,
+                    spotsRemaining: (updated.spots_remaining as number) ?? t.spotsRemaining,
+                    totalSpots: (updated.total_spots as number) ?? t.totalSpots,
+                  }
+                : t
+            )
+          );
+        }
+      )
+      .subscribe((status) => {
+        setIsLive(status === "SUBSCRIBED");
+      });
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filtered = useMemo(() => {
-    return trips.filter((t) => {
+    return liveTrips.filter((t) => {
       const matchDiff = difficultyFilter === "all" || t.difficulty === difficultyFilter;
       const matchRegion = regionFilter === "all" || t.state === regionFilter;
-      return matchDiff && matchRegion;
+      const matchDate = (() => {
+        if (dateFilter === "all") return true;
+        const tripDate = new Date(t.date + "T12:00:00");
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (dateFilter === "today") {
+          return tripDate.toDateString() === today.toDateString();
+        }
+        if (dateFilter === "week") {
+          const weekOut = new Date(today);
+          weekOut.setDate(weekOut.getDate() + 7);
+          return tripDate >= today && tripDate <= weekOut;
+        }
+        if (dateFilter === "weekend") {
+          const day = tripDate.getDay();
+          const isWeekend = day === 0 || day === 6;
+          const weekOut = new Date(today);
+          weekOut.setDate(weekOut.getDate() + 14);
+          return isWeekend && tripDate >= today && tripDate <= weekOut;
+        }
+        return true;
+      })();
+      return matchDiff && matchRegion && matchDate;
     });
-  }, [trips, difficultyFilter, regionFilter]);
+  }, [liveTrips, difficultyFilter, regionFilter, dateFilter]);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0F1117" }}>
@@ -42,12 +132,23 @@ export default function TripsClient({ trips, isLoggedIn }: Props) {
       >
         <div className="mx-auto max-w-7xl flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1
-              className="text-4xl font-bold text-white sm:text-5xl"
-              style={{ fontFamily: "var(--font-space-grotesk)" }}
-            >
-              Trip Feed
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1
+                className="text-4xl font-bold text-white sm:text-5xl"
+                style={{ fontFamily: "var(--font-space-grotesk)" }}
+              >
+                Trip Feed
+              </h1>
+              {isLive && (
+                <span
+                  className="flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium"
+                  style={{ color: "#52B788", borderColor: "rgba(82,183,136,0.30)", backgroundColor: "rgba(82,183,136,0.08)" }}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#52B788] animate-pulse" />
+                  Live
+                </span>
+              )}
+            </div>
             <p className="mt-3 text-lg" style={{ color: "#8B8FA8" }}>
               Upcoming runs looking for paddlers. Find your next adventure.
             </p>
@@ -118,12 +219,26 @@ export default function TripsClient({ trips, isLoggedIn }: Props) {
             ))}
           </select>
 
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="rounded-xl border px-3 py-2.5 text-sm text-white outline-none transition-colors focus:border-[#4ECDC4] cursor-pointer"
+            style={{ backgroundColor: "#1C1F26", borderColor: "rgba(255,255,255,0.10)" }}
+            aria-label="Filter by date"
+          >
+            <option value="all">All Dates</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="weekend">This Weekend</option>
+          </select>
+
           <div className="flex items-center gap-2 ml-auto">
-            {(difficultyFilter !== "all" || regionFilter !== "all") && (
+            {(difficultyFilter !== "all" || regionFilter !== "all" || dateFilter !== "all") && (
               <button
                 onClick={() => {
                   setDifficultyFilter("all");
                   setRegionFilter("all");
+                  setDateFilter("all");
                 }}
                 className="text-xs transition-colors hover:text-white"
                 style={{ color: "#8B8FA8" }}
@@ -140,7 +255,7 @@ export default function TripsClient({ trips, isLoggedIn }: Props) {
 
       {/* Grid */}
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        {trips.length === 0 ? (
+        {liveTrips.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <p className="text-lg font-semibold text-white">No trips yet</p>
             <p className="mt-2 text-sm" style={{ color: "#8B8FA8" }}>
@@ -172,9 +287,9 @@ export default function TripsClient({ trips, isLoggedIn }: Props) {
             </p>
           </div>
         ) : (
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 pb-24 md:pb-0">
             {filtered.map((trip) => (
-              <TripCard key={trip.id} trip={trip} />
+              <TripCard key={trip.id} trip={trip} isLoggedIn={isLoggedIn} />
             ))}
           </div>
         )}
