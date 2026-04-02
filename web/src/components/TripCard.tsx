@@ -1,14 +1,16 @@
 import Link from "next/link";
-import type { Trip } from "@/lib/mock-data";
+import type { TripSummary } from "@/lib/trip-types";
 import DifficultyBadge from "./DifficultyBadge";
 import FlowBadge from "./FlowBadge";
+import ImmInButton from "./ImmInButton";
 import { formatDate } from "@/lib/utils";
 
 interface Props {
-  trip: Trip;
+  trip: TripSummary;
+  isLoggedIn?: boolean;
 }
 
-export default function TripCard({ trip }: Props) {
+export default function TripCard({ trip, isLoggedIn }: Props) {
   const spotsPercent = (trip.spotsRemaining / trip.totalSpots) * 100;
   const isAlmostFull = trip.spotsRemaining <= 1;
 
@@ -117,13 +119,16 @@ export default function TripCard({ trip }: Props) {
         </div>
 
         {/* CTA */}
-        <Link
-          href={`/trips/${trip.id}`}
-          className="w-full rounded-xl py-2.5 text-center text-sm font-semibold text-[#0F1117] transition-all hover:opacity-90 active:scale-[0.98]"
-          style={{ backgroundColor: trip.spotsRemaining === 0 ? "#5c6070" : "#4ECDC4" }}
-        >
-          {trip.spotsRemaining === 0 ? "Trip Full" : "Request to Join"}
-        </Link>
+        <div className="flex flex-col gap-2">
+          <ImmInButton tripId={trip.id} spotsRemaining={trip.spotsRemaining} isLoggedIn={isLoggedIn ?? false} />
+          <Link
+            href={`/trips/${trip.id}`}
+            className="w-full text-center text-xs transition-colors hover:text-white"
+            style={{ color: "#5c6070" }}
+          >
+            View details →
+          </Link>
+        </div>
       </div>
     </div>
   );

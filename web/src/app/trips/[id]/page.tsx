@@ -1,49 +1,114 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { trips } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/server";
 import { getRiverBySlug } from "@/lib/rivers";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import FlowBadge from "@/components/FlowBadge";
+import JoinTripButton, { type JoinState } from "@/components/JoinTripButton";
 import { formatDate } from "@/lib/utils";
+import type { DifficultyClass } from "@/lib/trip-types";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function generateStaticParams() {
-  return trips.map((t) => ({ id: t.id }));
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const trip = trips.find((t) => t.id === id);
+  const supabase = await createClient();
+  const { data: trip } = await supabase
+    .from("trips")
+    .select("river_name, date, notes")
+    .eq("id", id)
+    .single();
   if (!trip) return { title: "Trip Not Found" };
   return {
-    title: `${trip.riverName} Trip — ${formatDate(trip.date)} | River Rats`,
-    description: trip.notes.slice(0, 155),
+    title: `${trip.river_name} Trip — ${formatDate(trip.date)} | River Rats`,
+    description: trip.notes?.slice(0, 155) ?? "",
   };
-}
-
-// Mock participants derived from trip data
-function getParticipants(trip: (typeof trips)[0]) {
-  const firstNames = ["Alex", "Sam", "Jordan", "Casey", "Morgan", "River", "Taylor"];
-  const lastInitials = ["K.", "M.", "R.", "B.", "T.", "V.", "W."];
-  const filled = trip.totalSpots - trip.spotsRemaining;
-  return Array.from({ length: filled }, (_, i) => ({
-    name: i === 0 ? trip.creatorName : `${firstNames[i % firstNames.length]} ${lastInitials[i % lastInitials.length]}`,
-    isCreator: i === 0,
-  }));
 }
 
 export default async function TripDetailPage({ params }: Props) {
   const { id } = await params;
-  const trip = trips.find((t) => t.id === id);
+  const supabase = await createClient();
+
+  const [
+    { data: trip },
+    { data: { user } },
+  ] = await Promise.all([
+    supabase
+      .from("trips")
+      .select(
+        `id, river_slug, river_name, date, time, meeting_point, notes,
+         min_skill, total_spots, spots_remaining, status,
+         creator:profiles!creator_id(id, display_name, skill_level)`
+      )
+      .eq("id", id)
+      .single(),
+    supabase.auth.getUser(),
+  ]);
+
   if (!trip) notFound();
 
-  const river = await getRiverBySlug(trip.riverSlug);
-  const participants = getParticipants(trip);
-  const isFull = trip.spotsRemaining === 0;
+  // Normalize creator (PostgREST one-to-one returns object)
+  const creator = Array.isArray(trip.creator) ? trip.creator[0] : trip.creator;
+  const creatorId = (creator as { id?: string } | null)?.id ?? null;
+  const creatorName = (creator as { display_name?: string } | null)?.display_name ?? "Unknown";
+  const creatorLevel = ((creator as { skill_level?: string } | null)?.skill_level ?? "III") as DifficultyClass;
+
+  // Fetch river data and members in parallel
+  const [river, { data: members }] = await Promise.all([
+    getRiverBySlug(trip.river_slug),
+    supabase
+      .from("trip_members")
+      .select("user_id, role, profiles(display_name, skill_level)")
+      .eq("trip_id", id),
+  ]);
+
+  // Determine join state
+  let joinState: JoinState = "open";
+  if (!user) {
+    joinState = "not-logged-in";
+  } else if (creatorId === user.id) {
+    joinState = "creator";
+  } else if (trip.spots_remaining === 0) {
+    joinState = "full";
+  } else {
+    // Check membership and pending request in parallel
+    const [{ data: memberRow }, { data: reqRow }] = await Promise.all([
+      supabase
+        .from("trip_members")
+        .select("id")
+        .eq("trip_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      supabase
+        .from("join_requests")
+        .select("id, status")
+        .eq("trip_id", id)
+        .eq("user_id", user.id)
+        .maybeSingle(),
+    ]);
+    if (memberRow) {
+      joinState = "member";
+    } else if (reqRow) {
+      joinState = "pending";
+    }
+  }
+
+  // Look up trip conversation ID for members/creators
+  let tripConvId: string | null = null;
+  if (joinState === "member" || joinState === "creator") {
+    const { data: convRow } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("trip_id", id)
+      .maybeSingle();
+    tripConvId = convRow?.id ?? null;
+  }
+
+  const isFull = trip.spots_remaining === 0;
+  const filledCount = trip.total_spots - trip.spots_remaining;
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0F1117" }}>
@@ -63,43 +128,39 @@ export default async function TripDetailPage({ params }: Props) {
               Trips
             </Link>
             <span style={{ color: "#5c6070" }}>/</span>
-            <span style={{ color: "#8B8FA8" }}>{trip.riverName}</span>
+            <span style={{ color: "#8B8FA8" }}>{trip.river_name}</span>
           </nav>
 
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="mb-3 flex flex-wrap items-center gap-3">
-                <DifficultyBadge difficulty={trip.difficulty} size="lg" />
-                <span className="text-sm" style={{ color: "#8B8FA8" }}>
-                  {trip.region}, {trip.state}
-                </span>
+                <DifficultyBadge difficulty={(river?.difficulty ?? "III") as DifficultyClass} size="lg" />
+                {river && (
+                  <span className="text-sm" style={{ color: "#8B8FA8" }}>
+                    {river.region}, {river.state}
+                  </span>
+                )}
               </div>
               <h1
                 className="text-4xl font-bold text-white sm:text-5xl leading-tight"
                 style={{ fontFamily: "var(--font-space-grotesk)" }}
               >
-                {trip.riverName}
+                {trip.river_name}
               </h1>
               <div className="mt-3 flex flex-wrap items-center gap-4">
-                <FlowBadge cfs={trip.currentCfs} />
+                {river && <FlowBadge cfs={river.currentCfs} trend={river.trend} />}
               </div>
             </div>
 
             {/* Join CTA — desktop */}
-            <div className="hidden sm:flex flex-col items-end gap-2">
-              <button
-                className="rounded-xl px-8 py-3.5 text-base font-semibold text-[#0F1117] transition-all hover:opacity-90 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: isFull ? "#5c6070" : "#4ECDC4" }}
-                disabled={isFull}
-                aria-label={isFull ? "Trip is full" : "Request to join this trip"}
-              >
-                {isFull ? "Trip Full" : "Request to Join"}
-              </button>
-              {!isFull && (
-                <p className="text-xs" style={{ color: "#8B8FA8" }}>
-                  {trip.spotsRemaining} spot{trip.spotsRemaining !== 1 ? "s" : ""} remaining
-                </p>
-              )}
+            <div className="hidden sm:block w-52">
+              <JoinTripButton
+                tripId={trip.id}
+                initialState={joinState}
+                spotsRemaining={trip.spots_remaining}
+                totalSpots={trip.total_spots}
+                className="w-full"
+              />
             </div>
           </div>
         </div>
@@ -156,7 +217,7 @@ export default async function TripDetailPage({ params }: Props) {
                       </svg>
                     ),
                     label: "Meeting point",
-                    value: trip.meetingPoint,
+                    value: trip.meeting_point,
                   },
                   {
                     icon: (
@@ -168,7 +229,7 @@ export default async function TripDetailPage({ params }: Props) {
                       </svg>
                     ),
                     label: "Group size",
-                    value: `${trip.totalSpots - trip.spotsRemaining} / ${trip.totalSpots} filled`,
+                    value: `${filledCount} / ${trip.total_spots} filled`,
                   },
                 ].map(({ icon, label, value }) => (
                   <div key={label} className="flex items-start gap-3">
@@ -197,22 +258,24 @@ export default async function TripDetailPage({ params }: Props) {
                 <span className="text-sm" style={{ color: "#8B8FA8" }}>
                   Minimum skill level:
                 </span>
-                <DifficultyBadge difficulty={trip.minSkill} size="sm" />
+                <DifficultyBadge difficulty={trip.min_skill as DifficultyClass} size="sm" />
               </div>
             </section>
 
             {/* Trip notes */}
-            <section>
-              <h2
-                className="mb-4 text-xl font-semibold text-white"
-                style={{ fontFamily: "var(--font-space-grotesk)" }}
-              >
-                Notes from the organizer
-              </h2>
-              <p className="leading-relaxed text-base" style={{ color: "#8B8FA8" }}>
-                {trip.notes}
-              </p>
-            </section>
+            {trip.notes && (
+              <section>
+                <h2
+                  className="mb-4 text-xl font-semibold text-white"
+                  style={{ fontFamily: "var(--font-space-grotesk)" }}
+                >
+                  Notes from the organizer
+                </h2>
+                <p className="leading-relaxed text-base" style={{ color: "#8B8FA8" }}>
+                  {trip.notes}
+                </p>
+              </section>
+            )}
 
             {/* Participants */}
             <section
@@ -226,7 +289,7 @@ export default async function TripDetailPage({ params }: Props) {
                 className="mb-5 text-lg font-semibold text-white"
                 style={{ fontFamily: "var(--font-space-grotesk)" }}
               >
-                Participants ({participants.length}/{trip.totalSpots})
+                Participants ({filledCount}/{trip.total_spots})
               </h2>
 
               {/* Progress bar */}
@@ -237,41 +300,46 @@ export default async function TripDetailPage({ params }: Props) {
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
-                    width: `${(participants.length / trip.totalSpots) * 100}%`,
+                    width: `${(filledCount / trip.total_spots) * 100}%`,
                     backgroundColor: isFull ? "#FF6B6B" : "#4ECDC4",
                   }}
                 />
               </div>
 
               <div className="flex flex-col gap-3">
-                {participants.map((p, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div
-                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                      style={{
-                        backgroundColor: p.isCreator ? "#4ECDC4" : "rgba(78,205,196,0.15)",
-                        color: p.isCreator ? "#0F1117" : "#4ECDC4",
-                      }}
-                    >
-                      {p.name.charAt(0)}
+                {(members ?? []).map((m, i) => {
+                  const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+                  const name = (profile as { display_name?: string } | null)?.display_name ?? "Paddler";
+                  const isCreatorRow = m.role === "creator";
+                  return (
+                    <div key={m.user_id ?? i} className="flex items-center gap-3">
+                      <div
+                        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                        style={{
+                          backgroundColor: isCreatorRow ? "#4ECDC4" : "rgba(78,205,196,0.15)",
+                          color: isCreatorRow ? "#0F1117" : "#4ECDC4",
+                        }}
+                      >
+                        {name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-white">{name}</span>
+                        {isCreatorRow && (
+                          <span
+                            className="ml-2 rounded-full px-2 py-0.5 text-xs"
+                            style={{
+                              backgroundColor: "rgba(78,205,196,0.12)",
+                              color: "#4ECDC4",
+                            }}
+                          >
+                            Organizer
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-sm font-medium text-white">{p.name}</span>
-                      {p.isCreator && (
-                        <span
-                          className="ml-2 rounded-full px-2 py-0.5 text-xs"
-                          style={{
-                            backgroundColor: "rgba(78,205,196,0.12)",
-                            color: "#4ECDC4",
-                          }}
-                        >
-                          Organizer
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                {Array.from({ length: trip.spotsRemaining }).map((_, i) => (
+                  );
+                })}
+                {Array.from({ length: trip.spots_remaining }).map((_, i) => (
                   <div key={`empty-${i}`} className="flex items-center gap-3">
                     <div
                       className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm"
@@ -293,13 +361,13 @@ export default async function TripDetailPage({ params }: Props) {
 
             {/* Mobile CTA */}
             <div className="sm:hidden">
-              <button
-                className="w-full rounded-xl py-4 text-base font-semibold text-[#0F1117] transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: isFull ? "#5c6070" : "#4ECDC4" }}
-                disabled={isFull}
-              >
-                {isFull ? "Trip Full" : "Request to Join"}
-              </button>
+              <JoinTripButton
+                tripId={trip.id}
+                initialState={joinState}
+                spotsRemaining={trip.spots_remaining}
+                totalSpots={trip.total_spots}
+                className="w-full"
+              />
             </div>
           </div>
 
@@ -324,12 +392,12 @@ export default async function TripDetailPage({ params }: Props) {
                   className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-[#0F1117]"
                   style={{ backgroundColor: "#4ECDC4" }}
                 >
-                  {trip.creatorName.charAt(0)}
+                  {creatorName.charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-semibold text-white">{trip.creatorName}</p>
+                  <p className="font-semibold text-white">{creatorName}</p>
                   <div className="mt-1">
-                    <DifficultyBadge difficulty={trip.creatorLevel} size="sm" />
+                    <DifficultyBadge difficulty={creatorLevel} size="sm" />
                   </div>
                 </div>
               </div>
@@ -393,33 +461,44 @@ export default async function TripDetailPage({ params }: Props) {
                 }}
               >
                 <span className="flex-1 truncate">riverrats.app/trips/{trip.id}</span>
-                <button
-                  className="flex-shrink-0 rounded-lg px-2.5 py-1 text-xs font-medium transition-colors hover:text-white"
-                  style={{
-                    backgroundColor: "rgba(78,205,196,0.12)",
-                    color: "#4ECDC4",
-                  }}
-                  aria-label="Copy share link"
-                >
-                  Copy
-                </button>
               </div>
             </div>
 
+            {/* Crew Chat button — members and creators only */}
+            {(joinState === "member" || joinState === "creator") && (
+              <Link
+                href={tripConvId ? `/messages/${tripConvId}` : "/messages"}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border py-4 text-sm font-semibold transition-all hover:border-[rgba(78,205,196,0.30)]"
+                style={{
+                  backgroundColor: "rgba(78,205,196,0.08)",
+                  borderColor: "rgba(78,205,196,0.20)",
+                  color: "#4ECDC4",
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+                Open Crew Chat
+              </Link>
+            )}
+
             {/* Join CTA sticky sidebar */}
             <div className="hidden sm:block">
-              <button
-                className="w-full rounded-2xl py-4 text-base font-semibold text-[#0F1117] transition-all hover:opacity-90 hover:scale-[1.01] disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: isFull ? "#5c6070" : "#4ECDC4" }}
-                disabled={isFull}
-              >
-                {isFull ? "Trip Full" : "Request to Join"}
-              </button>
-              {!isFull && (
-                <p className="mt-2 text-center text-xs" style={{ color: "#8B8FA8" }}>
-                  {trip.spotsRemaining} of {trip.totalSpots} spots remaining
-                </p>
-              )}
+              <JoinTripButton
+                tripId={trip.id}
+                initialState={joinState}
+                spotsRemaining={trip.spots_remaining}
+                totalSpots={trip.total_spots}
+                className="w-full"
+              />
             </div>
           </div>
         </div>

@@ -3,11 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getRiverBySlug } from "@/lib/rivers";
 import { riversData } from "@/lib/rivers-data";
-import { trips } from "@/lib/mock-data";
+import { fetchDailyFlow } from "@/lib/usgs-daily";
+import { fetchFlowPercentile, getLabelColor } from "@/lib/usgs-stats";
+import { createClient } from "@/lib/supabase/server";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import FlowBadge from "@/components/FlowBadge";
+import FlowSparkline from "@/components/FlowSparkline";
 import TripCard from "@/components/TripCard";
 import { getFlowStatus, getTrendIcon, getTrendColor } from "@/lib/utils";
+import type { TripSummary, DifficultyClass } from "@/lib/trip-types";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -32,7 +36,45 @@ export default async function RiverDetailPage({ params }: Props) {
   const river = await getRiverBySlug(slug);
   if (!river) notFound();
 
-  const relatedTrips = trips.filter((t) => t.riverSlug === slug);
+  const [dailyFlow, percentile, supabase] = await Promise.all([
+    fetchDailyFlow(river.gaugeId, 7),
+    fetchFlowPercentile(river.gaugeId, river.currentCfs),
+    createClient(),
+  ]);
+
+  const { data: rawTrips } = await supabase
+    .from("trips")
+    .select(`id, river_slug, river_name, date, time, meeting_point, notes, min_skill, total_spots, spots_remaining, creator:profiles!creator_id(display_name, skill_level)`)
+    .eq("river_slug", slug)
+    .in("status", ["open", "full"])
+    .order("date", { ascending: true });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const relatedTrips: TripSummary[] = (rawTrips ?? []).map((t) => {
+    const creator = Array.isArray(t.creator) ? t.creator[0] : t.creator;
+    return {
+      id: t.id,
+      riverSlug: t.river_slug,
+      riverName: t.river_name,
+      difficulty: river.difficulty,
+      date: t.date,
+      time: t.time,
+      meetingPoint: t.meeting_point,
+      notes: t.notes ?? "",
+      minSkill: t.min_skill as DifficultyClass,
+      creatorName: (creator as { display_name?: string } | null)?.display_name ?? "Unknown",
+      creatorLevel: ((creator as { skill_level?: string } | null)?.skill_level ?? "III") as DifficultyClass,
+      totalSpots: t.total_spots,
+      spotsRemaining: t.spots_remaining,
+      currentCfs: river.currentCfs,
+      region: river.region,
+      state: river.state,
+    };
+  });
+
   const flowStatus = getFlowStatus(river.currentCfs, river.optimalMin, river.optimalMax);
   const trendIcon = getTrendIcon(river.trend);
   const trendColor = getTrendColor(river.trend);
@@ -161,7 +203,7 @@ export default async function RiverDetailPage({ params }: Props) {
                 </h2>
                 <div className="flex flex-col gap-4">
                   {relatedTrips.map((trip) => (
-                    <TripCard key={trip.id} trip={trip} />
+                    <TripCard key={trip.id} trip={trip} isLoggedIn={!!user} />
                   ))}
                 </div>
               </section>
@@ -269,7 +311,36 @@ export default async function RiverDetailPage({ params }: Props) {
                     </span>
                   </div>
                 ))}
+
+                {percentile && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span style={{ color: "#8B8FA8" }}>Percentile (today)</span>
+                    <span className="font-medium" style={{ color: getLabelColor(percentile.label) }}>
+                      ~{percentile.percentile}th · {percentile.label}
+                    </span>
+                  </div>
+                )}
+
+                {river.tempC !== undefined && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span style={{ color: "#8B8FA8" }}>Water Temp</span>
+                    <span className="font-medium text-white">
+                      {river.tempC.toFixed(1)}°C / {(river.tempC * 9/5 + 32).toFixed(0)}°F
+                    </span>
+                  </div>
+                )}
               </div>
+
+              {dailyFlow.length >= 2 && (
+                <div className="mt-4 border-t pt-4" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+                  <p className="mb-2 text-xs font-medium" style={{ color: "#8B8FA8" }}>7-Day Flow</p>
+                  <FlowSparkline
+                    points={dailyFlow}
+                    optimalMin={river.optimalMin}
+                    optimalMax={river.optimalMax}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Quick stats */}

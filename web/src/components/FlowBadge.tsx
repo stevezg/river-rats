@@ -1,5 +1,5 @@
 import { formatCfs, getTrendIcon, getTrendColor, getFlowStatus } from "@/lib/utils";
-import type { FlowTrend } from "@/lib/mock-data";
+import type { FlowTrend } from "@riverrats/shared";
 
 interface Props {
   cfs: number;
@@ -7,6 +7,7 @@ interface Props {
   optimalMax?: number;
   trend?: FlowTrend;
   showStatus?: boolean;
+  compact?: boolean;
 }
 
 export default function FlowBadge({
@@ -15,6 +16,7 @@ export default function FlowBadge({
   optimalMax,
   trend,
   showStatus = false,
+  compact = false,
 }: Props) {
   const trendColor = trend ? getTrendColor(trend) : "#8B8FA8";
   const trendIcon = trend ? getTrendIcon(trend) : "";
@@ -23,6 +25,21 @@ export default function FlowBadge({
     showStatus && optimalMin !== undefined && optimalMax !== undefined
       ? getFlowStatus(cfs, optimalMin, optimalMax)
       : null;
+
+  if (compact) {
+    const dotColor = status?.color ?? "#4ECDC4";
+    return (
+      <div className="flex items-center gap-1.5">
+        <span
+          className="inline-block h-1.5 w-1.5 rounded-full flex-shrink-0"
+          style={{ backgroundColor: dotColor }}
+        />
+        <span className="text-xs font-medium" style={{ color: dotColor }}>
+          {cfs.toLocaleString()} CFS
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center gap-2">

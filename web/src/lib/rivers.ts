@@ -9,6 +9,7 @@ export interface River extends RiverStatic {
   timestamp: string;
   trend: FlowTrend;
   runnable: boolean;
+  tempC?: number;
 }
 
 function isRunnable(cfs: number, optimalMin: number, optimalMax: number): boolean {
@@ -33,6 +34,7 @@ export async function getRivers(): Promise<River[]> {
       timestamp: flow?.timestamp ?? "",
       trend: flow?.trend ?? "stable",
       runnable: flow ? isRunnable(currentCfs, r.optimalMin, r.optimalMax) : false,
+      tempC: flow?.tempC,
     };
   });
 }
@@ -54,5 +56,6 @@ export async function getRiverBySlug(slug: string): Promise<River | null> {
     timestamp: flow?.timestamp ?? "",
     trend: flow?.trend ?? "stable",
     runnable: flow ? isRunnable(currentCfs, staticRiver.optimalMin, staticRiver.optimalMax) : false,
+    tempC: flow?.tempC,
   };
 }
