@@ -96,6 +96,17 @@ export default async function TripDetailPage({ params }: Props) {
     }
   }
 
+  // Look up trip conversation ID for members/creators
+  let tripConvId: string | null = null;
+  if (joinState === "member" || joinState === "creator") {
+    const { data: convRow } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("trip_id", id)
+      .maybeSingle();
+    tripConvId = convRow?.id ?? null;
+  }
+
   const isFull = trip.spots_remaining === 0;
   const filledCount = trip.total_spots - trip.spots_remaining;
 
@@ -452,6 +463,32 @@ export default async function TripDetailPage({ params }: Props) {
                 <span className="flex-1 truncate">riverrats.app/trips/{trip.id}</span>
               </div>
             </div>
+
+            {/* Crew Chat button — members and creators only */}
+            {(joinState === "member" || joinState === "creator") && (
+              <Link
+                href={tripConvId ? `/messages/${tripConvId}` : "/messages"}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border py-4 text-sm font-semibold transition-all hover:border-[rgba(78,205,196,0.30)]"
+                style={{
+                  backgroundColor: "rgba(78,205,196,0.08)",
+                  borderColor: "rgba(78,205,196,0.20)",
+                  color: "#4ECDC4",
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                </svg>
+                Open Crew Chat
+              </Link>
+            )}
 
             {/* Join CTA sticky sidebar */}
             <div className="hidden sm:block">

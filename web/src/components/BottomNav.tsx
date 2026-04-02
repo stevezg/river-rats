@@ -39,6 +39,15 @@ const tabs = [
     isPost: true,
   },
   {
+    href: "/messages",
+    label: "Messages",
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 1.8} aria-hidden="true">
+        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+      </svg>
+    ),
+  },
+  {
     href: "/dashboard",
     label: "Profile",
     icon: (active: boolean) => (
