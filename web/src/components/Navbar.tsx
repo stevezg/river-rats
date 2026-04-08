@@ -88,7 +88,7 @@ export default async function Navbar() {
             </Link>
           ))}
           {user && <NavbarMessagesLink />}
-          {user && <NavbarFriendsLink />
+          {user && <NavbarFriendsLink />}
           {user && (
             <Link
               href="/dashboard"
