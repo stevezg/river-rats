@@ -164,8 +164,7 @@ export default async function HomePage() {
           </h1>
 
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed sm:text-xl" style={{ color: "#8B8FA8" }}>
-            Flows up. Post a trip. Find a crew in minutes.{" "}
-            <span className="text-white">The real-time paddling partner platform</span> — built for whitewater kayakers who don't want to wait.
+            Check flows. Post a trip. Enjoy the time on the river.
           </p>
 
           {/* CTAs */}
@@ -175,7 +174,7 @@ export default async function HomePage() {
               className="rounded-full px-8 py-4 text-base font-semibold text-[#0F1117] transition-all hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
               style={{ backgroundColor: "#4ECDC4" }}
             >
-              {user ? "Post a Trip" : "Get Started — Free"}
+              {user ? "Post a Trip" : "Get Started"}
             </Link>
             <Link
               href="/trips"
