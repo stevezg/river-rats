@@ -10,6 +10,7 @@ export interface FlowData {
   cfs: number;
   timestamp: string;
   trend: FlowTrend;
+  tempC?: number;
 }
 
 // Simple in-memory cache with TTL — prevents hammering the USGS API
@@ -46,6 +47,9 @@ function determineTrend(
 interface USGSTimeSeries {
   sourceInfo: {
     siteCode: Array<{ value: string }>;
+  };
+  variable?: {
+    variableCode?: Array<{ value: string }>;
   };
   values: Array<{
     value: Array<{
@@ -86,7 +90,7 @@ export async function fetchFlowData(
   if (uncachedIds.length === 0) return result;
 
   const sitesParam = uncachedIds.join(",");
-  const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${sitesParam}&parameterCd=00060&siteStatus=active`;
+  const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${sitesParam}&parameterCd=00060,00010&siteStatus=active`;
 
   try {
     const response = await fetch(url, {
@@ -106,23 +110,46 @@ export async function fetchFlowData(
     const data: USGSResponse = await response.json();
     const timeSeries: USGSTimeSeries[] = data?.value?.timeSeries ?? [];
 
+    // Collect data per gauge across both parameters
+    const gaugeCollector = new Map<string, {
+      cfs?: number;
+      cfsTimestamp?: string;
+      cfsValues?: Array<{ value: string; dateTime: string }>;
+      tempC?: number;
+    }>();
+
     for (const series of timeSeries) {
       const gaugeId = series.sourceInfo?.siteCode?.[0]?.value;
       if (!gaugeId) continue;
 
+      const paramCode = series.variable?.variableCode?.[0]?.value;
       const values = series.values?.[0]?.value ?? [];
       if (values.length === 0) continue;
 
       const latest = values[values.length - 1];
-      const cfs = parseFloat(latest.value);
-      if (isNaN(cfs)) continue;
+      const parsed = parseFloat(latest.value);
+      if (isNaN(parsed) || parsed < 0) continue;
 
+      if (!gaugeCollector.has(gaugeId)) gaugeCollector.set(gaugeId, {});
+      const entry = gaugeCollector.get(gaugeId)!;
+
+      if (paramCode === "00060") {
+        entry.cfs = parsed;
+        entry.cfsTimestamp = latest.dateTime;
+        entry.cfsValues = values;
+      } else if (paramCode === "00010") {
+        entry.tempC = parsed;
+      }
+    }
+
+    for (const [gaugeId, entry] of gaugeCollector) {
+      if (entry.cfs === undefined || !entry.cfsTimestamp || !entry.cfsValues) continue;
       const flowData: FlowData = {
-        cfs,
-        timestamp: latest.dateTime,
-        trend: determineTrend(values),
+        cfs: entry.cfs,
+        timestamp: entry.cfsTimestamp,
+        trend: determineTrend(entry.cfsValues),
+        ...(entry.tempC !== undefined ? { tempC: entry.tempC } : {}),
       };
-
       setCached(gaugeId, flowData);
       result.set(gaugeId, flowData);
     }

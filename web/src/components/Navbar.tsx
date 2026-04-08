@@ -1,6 +1,38 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import NavbarSignOut from "@/components/NavbarSignOut";
+import NotificationBell from "@/components/NotificationBell";
+import NavbarMessagesLink from "@/components/NavbarMessagesLink";
 
-export default function Navbar() {
+function getInitials(name: string | null | undefined): string {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+export default async function Navbar() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let displayName: string | null = null;
+  let avatarUrl: string | null = null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .eq("id", user.id)
+      .single();
+    displayName = profile?.display_name ?? user.email?.split("@")[0] ?? null;
+    avatarUrl = profile?.avatar_url ?? null;
+  }
+
   return (
     <header
       className="sticky top-0 z-50 border-b"
@@ -54,18 +86,55 @@ export default function Navbar() {
               {label}
             </Link>
           ))}
+          {user && <NavbarMessagesLink />}
+          {user && (
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white"
+            >
+              Dashboard
+            </Link>
+          )}
         </div>
 
-        {/* CTA */}
-        <div className="flex items-center gap-3">
-          <Link
-            href="/#waitlist"
-            className="rounded-full px-4 py-2 text-sm font-semibold text-[#0F1117] transition-all hover:scale-[1.02] active:scale-[0.98]"
-            style={{ backgroundColor: "#4ECDC4" }}
-          >
-            Join Waitlist
-          </Link>
-        </div>
+        {/* Auth area */}
+        {user ? (
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Link href="/dashboard" className="flex items-center gap-2 group">
+              <div
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-[#0F1117] transition-opacity group-hover:opacity-80"
+                style={{
+                  backgroundColor: avatarUrl ? "transparent" : "#4ECDC4",
+                  backgroundImage: avatarUrl ? `url(${avatarUrl})` : undefined,
+                  backgroundSize: "cover",
+                }}
+              >
+                {!avatarUrl && getInitials(displayName)}
+              </div>
+              <span className="hidden text-sm font-medium text-white sm:block">
+                {displayName}
+              </span>
+            </Link>
+            <NavbarSignOut />
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white"
+            >
+              Sign In
+            </Link>
+            <Link
+              href="/signup"
+              className="rounded-xl px-4 py-2 text-sm font-semibold text-[#0F1117] transition-all hover:opacity-90 active:scale-[0.98]"
+              style={{ backgroundColor: "#4ECDC4" }}
+            >
+              Sign Up
+            </Link>
+          </div>
+        )}
       </nav>
     </header>
   );
