@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import NavbarSignOut from "@/components/NavbarSignOut";
 import NotificationBell from "@/components/NotificationBell";
 import NavbarMessagesLink from "@/components/NavbarMessagesLink";
+import NavbarFriendsLink from "@/components/NavbarFriendsLink";
 
 function getInitials(name: string | null | undefined): string {
   if (!name) return "?";
@@ -87,6 +88,7 @@ export default async function Navbar() {
             </Link>
           ))}
           {user && <NavbarMessagesLink />}
+          {user && <NavbarFriendsLink />
           {user && (
             <Link
               href="/dashboard"
