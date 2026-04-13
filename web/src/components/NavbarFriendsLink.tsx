@@ -1,19 +1,19 @@
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { auth } from "@clerk/nextjs/server";
+import { createServiceClient } from "@/lib/clerk";
 
 export default async function NavbarFriendsLink() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
 
-  if (!user) return null;
+  if (!session.userId) return null;
+
+  const supabase = createServiceClient();
 
   // Count pending friend requests
   const { count } = await supabase
     .from("friends")
     .select("*", { count: "exact", head: true })
-    .eq("recipient_id", user.id)
+    .eq("recipient_id", session.userId)
     .eq("status", "pending");
 
   const pendingCount = count || 0;

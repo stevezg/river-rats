@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter } from "next/font/google";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import BottomNav from "@/components/BottomNav";
@@ -39,18 +40,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${spaceGrotesk.variable} ${inter.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-[#0F1117] text-white">
-        <Navbar />
-        <main className="flex-1 pb-16 md:pb-0">{children}</main>
-        <div className="md:hidden">
-          <BottomNav />
-        </div>
-        <Footer />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html
+        lang="en"
+        className={`${spaceGrotesk.variable} ${inter.variable} h-full antialiased`}
+      >
+        <body className="min-h-full flex flex-col bg-[#0F1117] text-white">
+          <Navbar />
+          <main className="flex-1 pb-16 md:pb-0">{children}</main>
+          <div className="md:hidden">
+            <BottomNav />
+          </div>
+          <Footer />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

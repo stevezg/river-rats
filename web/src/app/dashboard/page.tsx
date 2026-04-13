@@ -1,184 +1,213 @@
 import { redirect } from "next/navigation";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { createServiceClient } from "@/lib/clerk";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import SignOutButton from "@/components/SignOutButton";
+import { Calendar, Users, Droplets } from "lucide-react";
 
-function getSkillColor(skill: string | null): string {
-  switch (skill) {
-    case "I-II": return "#52B788";
-    case "III": return "#FFA94D";
-    case "III-IV": return "#FFA94D";
-    case "IV": return "#FF8C42";
-    case "IV-V": return "#FF8C42";
-    case "V": return "#FF6B6B";
-    case "V+": return "#C62828";
-    default: return "#8B8FA8";
-  }
-}
-
-function getSkillBg(skill: string | null): string {
-  switch (skill) {
-    case "I-II": return "rgba(82, 183, 136, 0.15)";
-    case "III": return "rgba(255, 169, 77, 0.15)";
-    case "III-IV": return "rgba(255, 169, 77, 0.15)";
-    case "IV": return "rgba(255, 140, 66, 0.15)";
-    case "IV-V": return "rgba(255, 140, 66, 0.15)";
-    case "V": return "rgba(255, 107, 107, 0.15)";
-    case "V+": return "rgba(198, 40, 40, 0.15)";
-    default: return "rgba(139, 143, 168, 0.15)";
-  }
-}
-
-function getInitials(name: string | null): string {
-  if (!name) return "?";
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
+export const metadata = {
+  title: "Dashboard | River Rats",
+};
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  const session = await auth();
+  
+  if (!session.userId) {
     redirect("/login");
   }
 
+  const user = await currentUser();
+  const userId = session.userId;
+  const supabase = createServiceClient();
+
+  // Fetch user profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, skill_level, avatar_url")
-    .eq("id", user.id)
+    .select("display_name, skill_level, bio")
+    .eq("id", userId)
     .single();
 
-  const displayName = profile?.display_name ?? user.email?.split("@")[0] ?? "Paddler";
-  const skillLevel = profile?.skill_level ?? null;
-  const avatarUrl = profile?.avatar_url ?? null;
+  // Fetch user's trips
+  const { data: myTrips } = await supabase
+    .from("trips")
+    .select("id, river_name, date, spots_remaining")
+    .eq("creator_id", userId)
+    .gte("date", new Date().toISOString().split("T")[0])
+    .order("date", { ascending: true })
+    .limit(5);
+
+  // Fetch trips user is attending
+  const { data: attendingTrips } = await supabase
+    .from("trip_members")
+    .select("trip_id, trips(id, river_name, date, creator_id, profiles(display_name))")
+    .eq("user_id", userId)
+    .limit(5);
+
+  const displayName = profile?.display_name || user?.firstName || "Paddler";
+  const skillLevel = profile?.skill_level || "III";
 
   return (
-    <div
-      className="min-h-[calc(100vh-64px)] px-4 py-12"
-      style={{ backgroundColor: "#0F1117" }}
-    >
-      <div className="mx-auto max-w-4xl">
-        {/* Header */}
-        <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            {/* Avatar */}
-            <div
-              className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-[#0F1117]"
-              style={{
-                backgroundColor: avatarUrl ? "transparent" : "#4ECDC4",
-                backgroundImage: avatarUrl ? `url(${avatarUrl})` : undefined,
-                backgroundSize: "cover",
-              }}
-            >
-              {!avatarUrl && getInitials(displayName)}
-            </div>
-
-            <div>
-              <h1
-                className="text-2xl font-bold text-white"
-                style={{ fontFamily: "var(--font-space-grotesk)" }}
-              >
-                Welcome back, {displayName}!
-              </h1>
-              <div className="mt-1 flex items-center gap-2">
-                {skillLevel && (
-                  <span
-                    className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                    style={{
-                      backgroundColor: getSkillBg(skillLevel),
-                      color: getSkillColor(skillLevel),
-                    }}
-                  >
-                    Class {skillLevel}
-                  </span>
-                )}
-                <span className="text-sm" style={{ color: "#8B8FA8" }}>
-                  {user.email}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Sign out */}
-          <SignOutButton />
+    <div className="min-h-screen" style={{ backgroundColor: "#0F1117" }}>
+      {/* Header */}
+      <div
+        className="border-b px-4 py-10 sm:px-6 lg:px-8"
+        style={{
+          borderColor: "rgba(255,255,255,0.06)",
+          background:
+            "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(78,205,196,0.08) 0%, transparent 70%)",
+        }}
+      >
+        <div className="mx-auto max-w-4xl">
+          <h1
+            className="text-4xl font-bold text-white"
+            style={{ fontFamily: "var(--font-space-grotesk)" }}
+          >
+            Hey, {displayName}!
+          </h1>
+          <p className="mt-2 text-base" style={{ color: "#8B8FA8" }}>
+            Class {skillLevel} paddler
+          </p>
         </div>
+      </div>
 
-        {/* Quick links */}
-        <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {[
-            { href: "/rivers", label: "Browse Rivers", icon: "🌊" },
-            { href: "/trips", label: "Find Trips", icon: "🛶" },
-            { href: "/trips/new", label: "Post a Trip", icon: "+" },
-          ].map(({ href, label, icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className="flex flex-col items-center justify-center gap-2 rounded-2xl py-6 text-center text-sm font-medium text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
-              style={{ backgroundColor: "#1C1F26" }}
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Quick Actions */}
+        <div className="mb-8 grid gap-4 sm:grid-cols-3">
+          <Link
+            href="/trips/new"
+            className="flex items-center gap-3 rounded-xl p-4 transition-colors hover:bg-white/5"
+            style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+          >
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-lg"
+              style={{ backgroundColor: "rgba(78,205,196,0.15)" }}
             >
-              <span className="text-2xl">{icon}</span>
-              <span>{label}</span>
-            </Link>
-          ))}
+              <Calendar className="h-5 w-5" style={{ color: "#4ECDC4" }} />
+            </div>
+            <div>
+              <p className="font-medium text-white">Post a Trip</p>
+              <p className="text-sm" style={{ color: "#8B8FA8" }}>
+                Find crew for your next run
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/friends"
+            className="flex items-center gap-3 rounded-xl p-4 transition-colors hover:bg-white/5"
+            style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+          >
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-lg"
+              style={{ backgroundColor: "rgba(78,205,196,0.15)" }}
+            >
+              <Users className="h-5 w-5" style={{ color: "#4ECDC4" }} />
+            </div>
+            <div>
+              <p className="font-medium text-white">Friends</p>
+              <p className="text-sm" style={{ color: "#8B8FA8" }}>
+                Connect with paddlers
+              </p>
+            </div>
+          </Link>
+
+          <Link
+            href="/rivers"
+            className="flex items-center gap-3 rounded-xl p-4 transition-colors hover:bg-white/5"
+            style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+          >
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-lg"
+              style={{ backgroundColor: "rgba(78,205,196,0.15)" }}
+            >
+              <Droplets className="h-5 w-5" style={{ color: "#4ECDC4" }} />
+            </div>
+            <div>
+              <p className="font-medium text-white">Check Flows</p>
+              <p className="text-sm" style={{ color: "#8B8FA8" }}>
+                See current conditions
+              </p>
+            </div>
+          </Link>
         </div>
 
         {/* My Trips */}
-        <section className="mb-6">
-          <h2
-            className="mb-4 text-lg font-semibold text-white"
-            style={{ fontFamily: "var(--font-space-grotesk)" }}
-          >
-            My Trips
-          </h2>
-          <div
-            className="rounded-2xl px-6 py-12 text-center"
-            style={{ backgroundColor: "#1C1F26" }}
-          >
-            <p className="mb-4 text-sm" style={{ color: "#8B8FA8" }}>
-              You haven't posted any trips yet.
+        <div className="mb-8">
+          <h2 className="mb-4 text-xl font-semibold text-white">Your Trips</h2>
+          {myTrips && myTrips.length > 0 ? (
+            <div className="space-y-3">
+              {myTrips.map((trip) => (
+                <Link
+                  key={trip.id}
+                  href={`/trips/${trip.id}`}
+                  className="flex items-center justify-between rounded-xl p-4 transition-colors hover:bg-white/5"
+                  style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                >
+                  <div>
+                    <p className="font-medium text-white">{trip.river_name}</p>
+                    <p className="text-sm" style={{ color: "#8B8FA8" }}>
+                      {new Date(trip.date).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <span
+                    className="rounded-full px-3 py-1 text-xs font-medium"
+                    style={{
+                      backgroundColor:
+                        trip.spots_remaining > 0
+                          ? "rgba(78,205,196,0.15)"
+                          : "rgba(255,107,107,0.15)",
+                      color: trip.spots_remaining > 0 ? "#4ECDC4" : "#FF6B6B",
+                    }}
+                  >
+                    {trip.spots_remaining} spots left
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center" style={{ color: "#8B8FA8" }}>
+              No upcoming trips.{" "}
+              <Link href="/trips/new" style={{ color: "#4ECDC4" }}>
+                Post one!
+              </Link>
             </p>
-            <Link
-              href="/trips/new"
-              className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-[#0F1117] transition-all hover:opacity-90 active:scale-[0.98]"
-              style={{ backgroundColor: "#4ECDC4" }}
-            >
-              Post Your First Trip
-            </Link>
-          </div>
-        </section>
+          )}
+        </div>
 
-        {/* Upcoming Trips */}
-        <section>
-          <h2
-            className="mb-4 text-lg font-semibold text-white"
-            style={{ fontFamily: "var(--font-space-grotesk)" }}
-          >
-            Upcoming Trips
+        {/* Attending */}
+        <div>
+          <h2 className="mb-4 text-xl font-semibold text-white">
+            Trips You&apos;re Joining
           </h2>
-          <div
-            className="rounded-2xl px-6 py-12 text-center"
-            style={{ backgroundColor: "#1C1F26" }}
-          >
-            <p className="mb-4 text-sm" style={{ color: "#8B8FA8" }}>
-              No upcoming trips. Find paddlers and plan a run.
+          {attendingTrips && attendingTrips.length > 0 ? (
+            <div className="space-y-3">
+              {attendingTrips.map((member: any) => (
+                <Link
+                  key={member.trip_id}
+                  href={`/trips/${member.trip_id}`}
+                  className="flex items-center justify-between rounded-xl p-4 transition-colors hover:bg-white/5"
+                  style={{ backgroundColor: "rgba(255,255,255,0.03)" }}
+                >
+                  <div>
+                    <p className="font-medium text-white">
+                      {member.trips?.river_name}
+                    </p>
+                    <p className="text-sm" style={{ color: "#8B8FA8" }}>
+                      {new Date(member.trips?.date).toLocaleDateString()} •{" "}
+                      {member.trips?.profiles?.display_name}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="py-8 text-center" style={{ color: "#8B8FA8" }}>
+              Not joining any trips yet.{" "}
+              <Link href="/trips" style={{ color: "#4ECDC4" }}>
+                Find one!
+              </Link>
             </p>
-            <Link
-              href="/trips"
-              className="inline-flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-white/5 active:scale-[0.98]"
-              style={{ borderColor: "rgba(255,255,255,0.12)" }}
-            >
-              Browse Trips
-            </Link>
-          </div>
-        </section>
+          )}
+        </div>
       </div>
     </div>
   );
