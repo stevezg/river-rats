@@ -2,11 +2,12 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@supabase/supabase-js";
 
 // Service role client for server-side operations (bypasses RLS)
+// Uses SUPABASE_SERVICE_ROLE_KEY for admin operations
 export function createServiceClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  // Prefer service role key for server operations, fallback to anon key for local dev
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return createClient(url, key);
 }
 
 // Get the current user ID from Clerk session
