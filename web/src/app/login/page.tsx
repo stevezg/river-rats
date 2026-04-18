@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSignIn } from "@clerk/nextjs";
@@ -8,6 +8,7 @@ import { useSignIn } from "@clerk/nextjs";
 export default function LoginPage() {
   const router = useRouter();
   const { isLoaded, signIn, setActive } = useSignIn();
+  const [mounted, setMounted] = useState(false);
   
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
@@ -16,8 +17,12 @@ export default function LoginPage() {
   const [verifying, setVerifying] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
 
-  // Wait for Clerk to load first
-  if (!isLoaded) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Wait for client-side mount and Clerk to load
+  if (!mounted || !isLoaded) {
     return (
       <div className="flex min-h-[calc(100vh-64px)] items-center justify-center" style={{ backgroundColor: "#0F1117" }}>
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#4ECDC4] border-t-transparent" />
