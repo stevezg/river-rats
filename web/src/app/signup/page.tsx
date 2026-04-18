@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSignUp, useAuth } from "@clerk/nextjs";
+import { useSignUp } from "@clerk/nextjs";
 
 type SkillLevel = "I-II" | "III" | "III-IV" | "IV" | "IV-V" | "V" | "V+";
 
@@ -12,7 +12,6 @@ const SKILL_LEVELS: SkillLevel[] = ["I-II", "III", "III-IV", "IV", "IV-V", "V", 
 export default function SignupPage() {
   const router = useRouter();
   const { isLoaded, signUp, setActive } = useSignUp();
-  const { isSignedIn } = useAuth();
   
   const [phone, setPhone] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -23,18 +22,19 @@ export default function SignupPage() {
   const [verifying, setVerifying] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(false);
 
-  // Redirect if already signed in
-  if (isSignedIn) {
-    router.push("/dashboard");
-    return null;
-  }
-
+  // Wait for Clerk to load first
   if (!isLoaded) {
     return (
       <div className="flex min-h-[calc(100vh-64px)] items-center justify-center" style={{ backgroundColor: "#0F1117" }}>
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#4ECDC4] border-t-transparent" />
       </div>
     );
+  }
+
+  // Redirect if already signed in (after Clerk is loaded)
+  if (signUp?.status === "complete") {
+    router.push("/dashboard");
+    return null;
   }
 
   async function handleSubmit(e: React.FormEvent) {
