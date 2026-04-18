@@ -40,20 +40,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
-      <html
-        lang="en"
-        className={`${spaceGrotesk.variable} ${inter.variable} h-full antialiased`}
-      >
-        <body className="min-h-full flex flex-col bg-[#0F1117] text-white">
+    <html
+      lang="en"
+      className={`${spaceGrotesk.variable} ${inter.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col bg-[#0F1117] text-white">
+        <ClerkProvider>
           <Navbar />
           <main className="flex-1 pb-16 md:pb-0">{children}</main>
           <div className="md:hidden">
             <BottomNav />
           </div>
           <Footer />
-        </body>
-      </html>
-    </ClerkProvider>
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
