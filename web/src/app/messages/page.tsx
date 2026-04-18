@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { createServiceClient } from "@/lib/clerk";
 import ConversationList from "@/components/ConversationList";
 import type { ConversationSummary } from "@/lib/message-types";
 
@@ -10,11 +11,14 @@ export const metadata: Metadata = {
 };
 
 export default async function MessagesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?next=/messages");
+  const session = await auth();
+  
+  if (!session.userId) {
+    redirect("/login?next=/messages");
+  }
+
+  const userId = session.userId;
+  const supabase = createServiceClient();
 
   // Fetch all conversations the user is in, with nested members + profiles
   const { data: memberRows } = await supabase
@@ -30,7 +34,7 @@ export default async function MessagesPage() {
       )
     `
     )
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("joined_at", { ascending: false });
 
   // Collect all conversation IDs
@@ -76,9 +80,9 @@ export default async function MessagesPage() {
     );
     const unread = lastRead
       ? msgs.filter(
-          (m) => m.created_at > lastRead && m.sender_id !== user.id
+          (m) => m.created_at > lastRead && m.sender_id !== userId
         ).length
-      : msgs.filter((m) => m.sender_id !== user.id).length;
+      : msgs.filter((m) => m.sender_id !== userId).length;
     unreadMap.set(row.conversation_id, unread);
   }
 
@@ -92,7 +96,7 @@ export default async function MessagesPage() {
 
       type MemberRow = { user_id: string; profiles: unknown };
       const allMembers = (conv.conversation_members ?? []) as MemberRow[];
-      const otherMembers = allMembers.filter((m) => m.user_id !== user.id);
+      const otherMembers = allMembers.filter((m) => m.user_id !== userId);
 
       // Title: other user's name for DM; river name for trip chat
       let title = conv.title ?? "Conversation";
@@ -161,7 +165,7 @@ export default async function MessagesPage() {
       <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 lg:px-8 pb-24 md:pb-10">
         <ConversationList
           conversations={conversations}
-          currentUserId={user.id}
+          currentUserId={userId}
         />
       </div>
     </div>

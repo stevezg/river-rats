@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { createServiceClient } from "@/lib/clerk";
 
 // GET /api/friends/status?userId=xxx - Check friendship status with a user
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  const session = await auth();
+  
+  if (!session.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const userId = session.userId;
+  const supabase = createServiceClient();
 
   const searchParams = request.nextUrl.searchParams;
   const otherUserId = searchParams.get("userId");
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
       .from("friends")
       .select("id, requester_id, recipient_id, status")
       .or(
-        `and(requester_id.eq.${user.id},recipient_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},recipient_id.eq.${user.id})`
+        `and(requester_id.eq.${userId},recipient_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},recipient_id.eq.${userId})`
       );
 
     if (!friendships || friendships.length === 0) {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (friendship.status === "pending") {
-      if (friendship.requester_id === user.id) {
+      if (friendship.requester_id === userId) {
         return NextResponse.json({
           status: "pending_sent",
           friendshipId: friendship.id,
