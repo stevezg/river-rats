@@ -9,6 +9,7 @@ export default function SignupPage() {
       style={{ backgroundColor: "#0F1117" }}
     >
       <SignUp 
+        routing="hash"
         appearance={{
           elements: {
             rootBox: "mx-auto w-full max-w-md",

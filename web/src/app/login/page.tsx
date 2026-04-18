@@ -9,6 +9,7 @@ export default function LoginPage() {
       style={{ backgroundColor: "#0F1117" }}
     >
       <SignIn 
+        routing="hash"
         appearance={{
           elements: {
             rootBox: "mx-auto w-full max-w-md",
