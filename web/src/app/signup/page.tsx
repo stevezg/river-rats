@@ -11,7 +11,7 @@ const SKILL_LEVELS: SkillLevel[] = ["I-II", "III", "III-IV", "IV", "IV-V", "V", 
 
 export default function SignupPage() {
   const router = useRouter();
-  const { isLoaded, signUp, setActive } = useSignUp();
+  const signUpHook = useSignUp();
   const [mounted, setMounted] = useState(false);
   
   const [phone, setPhone] = useState("");
@@ -25,16 +25,45 @@ export default function SignupPage() {
 
   useEffect(() => {
     setMounted(true);
+    console.log("Signup page mounted");
+    console.log("Clerk publishable key:", process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.slice(0, 20) + "...");
   }, []);
 
+  // Debug output
+  console.log("Render state:", { mounted, isLoaded: signUpHook?.isLoaded, hasSignUp: !!signUpHook?.signUp });
+
   // Wait for client-side mount and Clerk to load
-  if (!mounted || !isLoaded) {
+  if (!mounted) {
     return (
       <div className="flex min-h-[calc(100vh-64px)] items-center justify-center" style={{ backgroundColor: "#0F1117" }}>
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#4ECDC4] border-t-transparent" />
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#4ECDC4] border-t-transparent mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Loading page...</p>
+        </div>
       </div>
     );
   }
+
+  // If Clerk isn't loaded yet, show loading but with debug info
+  if (!signUpHook?.isLoaded) {
+    return (
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center" style={{ backgroundColor: "#0F1117" }}>
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#4ECDC4] border-t-transparent mx-auto mb-4" />
+          <p className="text-gray-400 text-sm">Loading Clerk...</p>
+          <p className="text-gray-500 text-xs mt-2">Check console for debug info</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 text-[#4ECDC4] text-sm underline"
+          >
+            Reload page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const { signUp, setActive } = signUpHook;
 
   // Redirect if already signed in (after Clerk is loaded)
   if (signUp?.status === "complete") {
@@ -57,6 +86,7 @@ export default function SignupPage() {
       await signUp.preparePhoneNumberVerification();
       setPendingVerification(true);
     } catch (err: any) {
+      console.error("Signup error:", err);
       setError(err.errors?.[0]?.message || "Failed to send verification code");
     } finally {
       setLoading(false);
@@ -97,6 +127,7 @@ export default function SignupPage() {
         setError("Verification incomplete. Please try again.");
       }
     } catch (err: any) {
+      console.error("Verification error:", err);
       setError(err.errors?.[0]?.message || "Invalid verification code");
     } finally {
       setVerifying(false);
