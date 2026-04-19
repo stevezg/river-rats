@@ -32,18 +32,18 @@ export const riversData: RiverStatic[] = [
     name: "Arkansas River — Royal Gorge",
     region: "Royal Gorge",
     state: "CO",
-    difficulty: "IV-V",
+    difficulty: "III-IV",
     optimalMin: 600,
     optimalMax: 1200,
     description:
-      "The Royal Gorge section of the Arkansas River is Colorado's most iconic big-water run. Towering granite walls rise 1,000 feet on either side as you punch through continuous Class IV and V rapids. The gorge delivers relentless whitewater with little chance for recovery — this is committing water that demands experienced paddlers with solid roll mechanics and experience reading fast, technical lines.",
+      "The Royal Gorge section of the Arkansas River is Colorado's most iconic big-water run. Towering granite walls rise 1,000 feet on either side as you punch through continuous Class III and IV rapids with occasional Class V features. The gorge delivers sustained whitewater that demands experienced paddlers with solid roll mechanics and experience reading fast, technical lines.",
     hazards: [
-      "Continuous Class IV-V rapids with limited eddies",
+      "Continuous Class III-IV rapids with limited eddies",
       "Undercut rocks at Sunshine Falls (Class V)",
       "Keeper hydraulic at Wall Slammer in high water",
       "Remote canyon — no road access for rescue",
     ],
-    gaugeId: "07091200",
+    gaugeId: "07094500",
   },
   {
     id: "2",
@@ -52,8 +52,8 @@ export const riversData: RiverStatic[] = [
     region: "Front Range",
     state: "CO",
     difficulty: "III-IV",
-    optimalMin: 200,
-    optimalMax: 600,
+    optimalMin: 400,
+    optimalMax: 1000,
     description:
       "Clear Creek Canyon is the Front Range's go-to training ground for intermediate paddlers. Running just 45 minutes from Denver, it delivers punchy Class III-IV rapids in a tight canyon. The Upper section above Golden pushes harder, while the lower canyon offers more technical boulder gardens. Flows change fast after afternoon storms — always check before you go.",
     hazards: [
@@ -87,14 +87,14 @@ export const riversData: RiverStatic[] = [
     name: "Animas River",
     region: "San Juan Mountains",
     state: "CO",
-    difficulty: "III-IV",
+    difficulty: "II-III",
     optimalMin: 400,
     optimalMax: 900,
     description:
-      "The Animas runs through the heart of Durango with one of the most accessible whitewater sections in the state. The Smelter Rapid section in town draws local kayakers daily, while the Animas Canyon above Durango delivers remote Class IV in a wilderness setting accessible only by the Durango & Silverton Narrow Gauge Railroad. Current flows are pushing the upper end of optimal — expect flushing water and less technical eddying.",
+      "The Lower Animas runs through the heart of Durango and offers one of the most accessible whitewater sections in the state. The Smelter Rapid section in town draws local kayakers daily with fun Class II-III wave trains and play features. This is the town run — for the expert Upper Animas Canyon (Class IV-V), a different gauge and put-in are required. Current flows are pushing the upper end of optimal — expect flushing water and less technical eddying.",
     hazards: [
       "Smelter Rapid washes out above 1,200 CFS and becomes dangerous keeper",
-      "Animas Canyon — remote, multi-day commitment",
+      "Town run — busy with commercial traffic on summer weekends",
       "Water quality concerns post-Gold King Mine spill (test before swimming)",
     ],
     gaugeId: "09361500",
@@ -109,14 +109,14 @@ export const riversData: RiverStatic[] = [
     optimalMin: 1500,
     optimalMax: 3500,
     description:
-      "Glenwood Canyon is one of America's great natural wonders — and it has the whitewater to match. At current flows, Shoshone Rapid is firing at full Class IV, with a powerful hydraulic that flips unprepared boaters regularly. The canyon walls rise 1,200 feet of Precambrian granite, and I-70 runs the full length above — easy shuttle but no escaping the grandeur. Current high water creates pushy, technical lines throughout.",
+      "Glenwood Canyon is one of America's great natural wonders — and it has the whitewater to match. At current flows, the canyon delivers sustained Class III-IV wave trains and powerful hydraulics that flip unprepared boaters regularly. The canyon walls rise 1,200 feet of Precambrian granite, and I-70 runs the full length above — easy shuttle but no escaping the grandeur. Current high water creates pushy, technical lines throughout.",
     hazards: [
-      "Shoshone Rapid — powerful hydraulic, avoid far river left",
+      "Powerful hydraulics at multiple rapids — avoid far river left",
       "High water creates strainers on river-left at numerous bends",
       "I-70 debris and runoff after heavy rain",
       "Cold water year-round from deep canyon shade",
     ],
-    gaugeId: "09085000",
+    gaugeId: "09071750",
   },
   {
     id: "6",
@@ -202,8 +202,8 @@ export const riversData: RiverStatic[] = [
     region: "Elk Mountains",
     state: "CO",
     difficulty: "IV",
-    optimalMin: 300,
-    optimalMax: 900,
+    optimalMin: 500,
+    optimalMax: 3000,
     description:
       "The Crystal River descends from the Elk Mountains through Marble — the same town that quarried the stone for the Lincoln Memorial — and carves a stunning canyon past the ghost town of Crystal and its famous mill. The river is tight, technical, and beautiful. Class IV drops arrive in quick succession through a narrow canyon of white marble bedrock and dark metamorphic rock. Snowmelt from the Raggeds keeps it running through late June, and the brief window when flows are optimal is some of the finest creek-boating in the state.",
     hazards: [
@@ -239,7 +239,7 @@ export const riversData: RiverStatic[] = [
     name: "Colorado River — Shoshone",
     region: "Glenwood Canyon",
     state: "CO",
-    difficulty: "III",
+    difficulty: "III-IV",
     optimalMin: 1200,
     optimalMax: 4000,
     description:
@@ -279,7 +279,7 @@ export const riversData: RiverStatic[] = [
     name: "Gunnison Gorge",
     region: "Black Canyon",
     state: "CO",
-    difficulty: "IV",
+    difficulty: "III-IV",
     optimalMin: 1000,
     optimalMax: 3500,
     description:
@@ -298,7 +298,7 @@ export const riversData: RiverStatic[] = [
     name: "Taylor River",
     region: "Gunnison Basin",
     state: "CO",
-    difficulty: "IV",
+    difficulty: "III-IV",
     optimalMin: 250,
     optimalMax: 700,
     description:
