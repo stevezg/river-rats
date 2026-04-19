@@ -9,9 +9,19 @@ type SkillLevel = "I-II" | "III" | "III-IV" | "IV" | "IV-V" | "V" | "V+";
 
 const SKILL_LEVELS: SkillLevel[] = ["I-II", "III", "III-IV", "IV", "IV-V", "V", "V+"];
 
+function normalizePhone(raw: string): string {
+  // Strip everything except digits and the leading +
+  const digits = raw.replace(/[^\d+]/g, "");
+  // If it starts with +, keep it; otherwise assume US and prepend +1
+  if (digits.startsWith("+")) return digits;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return digits;
+}
+
 export default function SignupPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [skillLevel, setSkillLevel] = useState<SkillLevel>("III");
@@ -24,9 +34,16 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!normalizedPhone.startsWith("+") || normalizedPhone.length < 8) {
+      setError("Please enter a valid phone number with country code (e.g. +13035551234).");
+      setLoading(false);
+      return;
+    }
 
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
+      phone: normalizedPhone,
       password,
     });
 
@@ -147,19 +164,19 @@ export default function SignupPage() {
 
             <div>
               <label
-                htmlFor="email"
+                htmlFor="phone"
                 className="mb-1.5 block text-sm font-medium"
                 style={{ color: "#8B8FA8" }}
               >
-                Email
+                Phone Number
               </label>
               <input
-                id="email"
-                type="email"
-                autoComplete="email"
+                id="phone"
+                type="tel"
+                autoComplete="tel"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[#5c6070]"
                 style={{
                   backgroundColor: "#0F1117",
@@ -167,8 +184,11 @@ export default function SignupPage() {
                 }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "#4ECDC4")}
                 onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
-                placeholder="you@example.com"
+                placeholder="+1 (303) 555-1234"
               />
+              <p className="mt-1 text-xs" style={{ color: "#5c6070" }}>
+                Include country code (e.g. +1 for US)
+              </p>
             </div>
 
             <div>

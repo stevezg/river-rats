@@ -30,7 +30,7 @@ export default async function Navbar() {
       .select("display_name, avatar_url")
       .eq("id", user.id)
       .single();
-    displayName = profile?.display_name ?? user.email?.split("@")[0] ?? null;
+    displayName = profile?.display_name ?? user.phone ?? "Paddler";
     avatarUrl = profile?.avatar_url ?? null;
   }
 

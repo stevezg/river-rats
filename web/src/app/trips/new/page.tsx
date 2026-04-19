@@ -3,9 +3,6 @@ import Link from "next/link";
 import NewTripForm from "@/components/NewTripForm";
 
 // This route is protected by middleware — unauthenticated users are redirected to /login.
-// To customize the Supabase confirmation email template, go to:
-//   Supabase Dashboard → Authentication → Email Templates → Confirm signup
-// You can update the subject, body, and redirect URL there to match your domain.
 
 export const metadata: Metadata = {
   title: "Post a Trip | River Rats",

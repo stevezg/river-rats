@@ -56,7 +56,7 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
-  const displayName = profile?.display_name ?? user.email?.split("@")[0] ?? "Paddler";
+  const displayName = profile?.display_name ?? user.phone ?? "Paddler";
   const skillLevel = profile?.skill_level ?? null;
   const avatarUrl = profile?.avatar_url ?? null;
 
@@ -101,7 +101,7 @@ export default async function DashboardPage() {
                   </span>
                 )}
                 <span className="text-sm" style={{ color: "#8B8FA8" }}>
-                  {user.email}
+                  {user.phone ?? ""}
                 </span>
               </div>
             </div>

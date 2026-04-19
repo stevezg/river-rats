@@ -5,9 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+function normalizePhone(raw: string): string {
+  const digits = raw.replace(/[^\d+]/g, "");
+  if (digits.startsWith("+")) return digits;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return digits;
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,7 +27,15 @@ export default function LoginPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const normalizedPhone = normalizePhone(phone);
+
+    if (!normalizedPhone.startsWith("+") || normalizedPhone.length < 8) {
+      setError("Please enter a valid phone number with country code (e.g. +13035551234).");
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({ phone: normalizedPhone, password });
 
     if (error) {
       setError(error.message);
@@ -105,7 +121,7 @@ export default function LoginPage() {
           <div className="mb-6 flex items-center gap-3">
             <div className="h-px flex-1" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />
             <span className="text-xs" style={{ color: "#8B8FA8" }}>
-              or sign in with email
+              or sign in with phone
             </span>
             <div className="h-px flex-1" style={{ backgroundColor: "rgba(255,255,255,0.08)" }} />
           </div>
@@ -128,19 +144,19 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label
-                htmlFor="email"
+                htmlFor="phone"
                 className="mb-1.5 block text-sm font-medium"
                 style={{ color: "#8B8FA8" }}
               >
-                Email
+                Phone Number
               </label>
               <input
-                id="email"
-                type="email"
-                autoComplete="email"
+                id="phone"
+                type="tel"
+                autoComplete="tel"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[#5c6070] focus:ring-2"
                 style={{
                   backgroundColor: "#0F1117",
@@ -148,7 +164,7 @@ export default function LoginPage() {
                 }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "#4ECDC4")}
                 onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
-                placeholder="you@example.com"
+                placeholder="+1 (303) 555-1234"
               />
             </div>
 
@@ -194,7 +210,7 @@ export default function LoginPage() {
 
         {/* Footer link */}
         <p className="mt-6 text-center text-sm" style={{ color: "#8B8FA8" }}>
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <Link
             href="/signup"
             className="font-semibold transition-colors hover:opacity-80"
