@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { createServiceClient } from "@/lib/clerk";
 
 // POST /api/friends/remove - Remove a friend
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+  const session = await auth();
+  
+  if (!session.userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const userId = session.userId;
+  const supabase = createServiceClient();
 
   try {
     const { friendshipId } = await request.json();
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const otherUserId =
-      friendship.requester_id === user.id
+      friendship.requester_id === userId
         ? friendship.recipient_id
         : friendship.requester_id;
 

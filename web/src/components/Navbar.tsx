@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import NavbarSignOut from "@/components/NavbarSignOut";
-import NotificationBell from "@/components/NotificationBell";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { SignOutButton } from "@clerk/nextjs";
 import NavbarMessagesLink from "@/components/NavbarMessagesLink";
 import NavbarFriendsLink from "@/components/NavbarFriendsLink";
+import NotificationBell from "@/components/NotificationBell";
 
 function getInitials(name: string | null | undefined): string {
   if (!name) return "?";
@@ -16,23 +16,12 @@ function getInitials(name: string | null | undefined): string {
 }
 
 export default async function Navbar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  let displayName: string | null = null;
-  let avatarUrl: string | null = null;
-
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("display_name, avatar_url")
-      .eq("id", user.id)
-      .single();
-    displayName = profile?.display_name ?? user.email?.split("@")[0] ?? null;
-    avatarUrl = profile?.avatar_url ?? null;
-  }
+  const session = await auth();
+  const user = await currentUser();
+  
+  const isSignedIn = session.userId !== null;
+  const displayName = user?.firstName || user?.username || "User";
+  const avatarUrl = user?.imageUrl;
 
   return (
     <header
@@ -87,9 +76,9 @@ export default async function Navbar() {
               {label}
             </Link>
           ))}
-          {user && <NavbarMessagesLink />}
-          {user && <NavbarFriendsLink />}
-          {user && (
+          {isSignedIn && <NavbarMessagesLink />}
+          {isSignedIn && <NavbarFriendsLink />}
+          {isSignedIn && (
             <Link
               href="/dashboard"
               className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white"
@@ -100,7 +89,7 @@ export default async function Navbar() {
         </div>
 
         {/* Auth area */}
-        {user ? (
+        {isSignedIn ? (
           <div className="flex items-center gap-2">
             <NotificationBell />
             <Link href="/dashboard" className="flex items-center gap-2 group">
@@ -118,7 +107,11 @@ export default async function Navbar() {
                 {displayName}
               </span>
             </Link>
-            <NavbarSignOut />
+            <SignOutButton>
+              <button className="rounded-lg px-3 py-2 text-sm font-medium text-[#8B8FA8] transition-colors hover:bg-white/5 hover:text-white">
+                Sign Out
+              </button>
+            </SignOutButton>
           </div>
         ) : (
           <div className="flex items-center gap-3">
