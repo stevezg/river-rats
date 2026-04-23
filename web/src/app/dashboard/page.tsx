@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
 import SignOutButton from "@/components/SignOutButton";
 
 function getSkillColor(skill: string | null): string {
@@ -40,25 +40,15 @@ function getInitials(name: string | null): string {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSession();
 
   if (!user) {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, skill_level, avatar_url")
-    .eq("id", user.id)
-    .single();
-
-  const displayName = profile?.display_name ?? user.email?.split("@")[0] ?? "Paddler";
-  const skillLevel = profile?.skill_level ?? null;
-  const avatarUrl = profile?.avatar_url ?? null;
+  const displayName = user.display_name ?? user.email?.split("@")[0] ?? "Paddler";
+  const skillLevel = user.skill_level ?? null;
+  const avatarUrl = user.avatar_url ?? null;
 
   return (
     <div

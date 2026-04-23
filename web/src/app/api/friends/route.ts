@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/auth-server";
 import { createClient } from "@/lib/supabase/server";
 
 // GET /api/friends - Get all friends and pending requests
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSession();
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const supabase = await createClient();
 
   try {
     // Get accepted friends using the view

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 type SkillLevel = "I-II" | "III" | "III-IV" | "IV" | "IV-V" | "V" | "V+";
 
@@ -23,33 +22,32 @@ export default function SignupPage() {
     setError("");
     setLoading(true);
 
-    const supabase = createClient();
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          displayName,
+          skillLevel,
+        }),
+      });
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+      const data = await res.json();
 
-    if (signUpError) {
-      setError(signUpError.message);
-      setLoading(false);
-      return;
-    }
-
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ display_name: displayName, skill_level: skillLevel })
-        .eq("id", data.user.id);
-
-      if (profileError) {
-        // Non-fatal: profile update failed but auth succeeded
-        console.error("Profile update error:", profileError.message);
+      if (!res.ok) {
+        setError(data.error || "Signup failed");
+        setLoading(false);
+        return;
       }
-    }
 
-    router.push("/dashboard");
-    router.refresh();
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Try again.");
+      setLoading(false);
+    }
   }
 
   return (

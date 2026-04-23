@@ -3,6 +3,7 @@
 
 export type DifficultyClass =
   | "I-II"
+  | "II-III"
   | "III"
   | "III-IV"
   | "IV"

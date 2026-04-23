@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
 import NavbarSignOut from "@/components/NavbarSignOut";
 import NotificationBell from "@/components/NotificationBell";
 import NavbarMessagesLink from "@/components/NavbarMessagesLink";
@@ -16,23 +16,10 @@ function getInitials(name: string | null | undefined): string {
 }
 
 export default async function Navbar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSession();
 
-  let displayName: string | null = null;
-  let avatarUrl: string | null = null;
-
-  if (user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("display_name, avatar_url")
-      .eq("id", user.id)
-      .single();
-    displayName = profile?.display_name ?? user.email?.split("@")[0] ?? null;
-    avatarUrl = profile?.avatar_url ?? null;
-  }
+  const displayName = user?.display_name ?? user?.email?.split("@")[0] ?? null;
+  const avatarUrl = user?.avatar_url ?? null;
 
   return (
     <header
