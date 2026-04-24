@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { currentUser } from "@clerk/nextjs/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import NavbarSignOut from "@/components/NavbarSignOut";
 import NotificationBell from "@/components/NotificationBell";
 import NavbarMessagesLink from "@/components/NavbarMessagesLink";
@@ -16,22 +17,25 @@ function getInitials(name: string | null | undefined): string {
 }
 
 export default async function Navbar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const clerkUser = await currentUser();
 
   let displayName: string | null = null;
   let avatarUrl: string | null = null;
 
-  if (user) {
+  if (clerkUser) {
+    const supabase = createServiceClient();
     const { data: profile } = await supabase
       .from("profiles")
       .select("display_name, avatar_url")
-      .eq("id", user.id)
+      .eq("clerk_user_id", clerkUser.id)
       .single();
-    displayName = profile?.display_name ?? user.email?.split("@")[0] ?? null;
-    avatarUrl = profile?.avatar_url ?? null;
+
+    displayName =
+      profile?.display_name ??
+      [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
+      clerkUser.emailAddresses[0]?.emailAddress?.split("@")[0] ??
+      null;
+    avatarUrl = profile?.avatar_url ?? clerkUser.imageUrl ?? null;
   }
 
   return (
@@ -51,10 +55,7 @@ export default async function Navbar() {
             style={{ backgroundColor: "#4ECDC4" }}
           >
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-              <path
-                d="M9 2C9 2 4 6.5 4 10a5 5 0 0010 0c0-3.5-5-8-5-8z"
-                fill="white"
-              />
+              <path d="M9 2C9 2 4 6.5 4 10a5 5 0 0010 0c0-3.5-5-8-5-8z" fill="white" />
               <path
                 d="M3 12.5C5 11.5 7 12 9 11s5-1.5 6 .5"
                 stroke="white"
@@ -87,9 +88,9 @@ export default async function Navbar() {
               {label}
             </Link>
           ))}
-          {user && <NavbarMessagesLink />}
-          {user && <NavbarFriendsLink />}
-          {user && (
+          {clerkUser && <NavbarMessagesLink />}
+          {clerkUser && <NavbarFriendsLink />}
+          {clerkUser && (
             <Link
               href="/dashboard"
               className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white"
@@ -100,7 +101,7 @@ export default async function Navbar() {
         </div>
 
         {/* Auth area */}
-        {user ? (
+        {clerkUser ? (
           <div className="flex items-center gap-2">
             <NotificationBell />
             <Link href="/dashboard" className="flex items-center gap-2 group">

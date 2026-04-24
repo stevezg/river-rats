@@ -1,62 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { createServiceClient } from "@/lib/supabase/server";
+import { getProfileId } from "@/lib/profile";
 
-// GET /api/friends - Get all friends and pending requests
-export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+// GET /api/friends — all friends and pending requests for the current user
+export async function GET(_request: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const profileId = await getProfileId(userId);
+  if (!profileId) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  const supabase = createServiceClient();
+
+  const { data: rows } = await supabase
+    .from("friends")
+    .select(
+      `id, requester_id, recipient_id, status, created_at,
+       requester:profiles!friends_requester_id_fkey(id, display_name, bio),
+       recipient:profiles!friends_recipient_id_fkey(id, display_name, bio)`
+    )
+    .or(`requester_id.eq.${profileId},recipient_id.eq.${profileId}`);
+
+  const friends = [];
+  const pendingReceived = [];
+  const pendingSent = [];
+
+  for (const row of rows ?? []) {
+    const req = row.requester as { id: string; display_name: string; bio: string | null } | null;
+    const rec = row.recipient as { id: string; display_name: string; bio: string | null } | null;
+
+    if (row.status === "accepted") {
+      const isRequester = row.requester_id === profileId;
+      friends.push({
+        friendshipId: row.id,
+        friendId: isRequester ? row.recipient_id : row.requester_id,
+        friendName: isRequester ? rec?.display_name : req?.display_name,
+        friendBio: isRequester ? rec?.bio : req?.bio,
+        friendsSince: row.created_at,
+      });
+    } else if (row.status === "pending") {
+      if (row.requester_id === profileId) {
+        pendingSent.push({
+          friendshipId: row.id,
+          recipientId: row.recipient_id,
+          recipientName: rec?.display_name,
+          createdAt: row.created_at,
+        });
+      } else {
+        pendingReceived.push({
+          friendshipId: row.id,
+          requesterId: row.requester_id,
+          requesterName: req?.display_name,
+          createdAt: row.created_at,
+        });
+      }
+    }
   }
 
-  try {
-    // Get accepted friends using the view
-    const { data: friends } = await supabase
-      .from("my_friends")
-      .select("friendship_id, friend_id, friend_name, friend_bio, friends_since")
-      .order("friends_since", { ascending: false });
-
-    // Get pending requests received
-    const { data: pendingReceived } = await supabase
-      .from("pending_requests_received")
-      .select("friendship_id, requester_id, requester_name, created_at")
-      .order("created_at", { ascending: false });
-
-    // Get pending requests sent
-    const { data: pendingSent } = await supabase
-      .from("pending_requests_sent")
-      .select("friendship_id, recipient_id, recipient_name, created_at")
-      .order("created_at", { ascending: false });
-
-    return NextResponse.json({
-      friends: friends?.map((f) => ({
-        friendshipId: f.friendship_id,
-        friendId: f.friend_id,
-        friendName: f.friend_name,
-        friendBio: f.friend_bio,
-        friendsSince: f.friends_since,
-      })) || [],
-      pendingReceived: pendingReceived?.map((r) => ({
-        friendshipId: r.friendship_id,
-        requesterId: r.requester_id,
-        requesterName: r.requester_name,
-        createdAt: r.created_at,
-      })) || [],
-      pendingSent: pendingSent?.map((s) => ({
-        friendshipId: s.friendship_id,
-        recipientId: s.recipient_id,
-        recipientName: s.recipient_name,
-        createdAt: s.created_at,
-      })) || [],
-    });
-  } catch (error) {
-    console.error("Error fetching friends:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch friends" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({ friends, pendingReceived, pendingSent });
 }

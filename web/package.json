@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.0.0",
+    "@clerk/themes": "^2.0.0",
     "@riverrats/shared": "*",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.100.1",

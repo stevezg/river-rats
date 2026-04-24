@@ -1,64 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
+import { createServiceClient } from "@/lib/supabase/server";
+import { getProfileId } from "@/lib/profile";
 
-// POST /api/friends/remove - Remove a friend
+// POST /api/friends/remove — unfriend an accepted friend
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const profileId = await getProfileId(userId);
+  if (!profileId) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+
+  const { friendshipId } = await request.json();
+  if (!friendshipId) {
+    return NextResponse.json({ error: "friendshipId is required" }, { status: 400 });
   }
 
-  try {
-    const { friendshipId } = await request.json();
+  const supabase = createServiceClient();
 
-    if (!friendshipId) {
-      return NextResponse.json(
-        { error: "Friendship ID is required" },
-        { status: 400 }
-      );
-    }
+  const { error } = await supabase
+    .from("friends")
+    .delete()
+    .eq("id", friendshipId)
+    .or(`requester_id.eq.${profileId},recipient_id.eq.${profileId}`)
+    .eq("status", "accepted");
 
-    // Get the friendship to find the other user
-    const { data: friendship } = await supabase
-      .from("friends")
-      .select("requester_id, recipient_id")
-      .eq("id", friendshipId)
-      .single();
-
-    if (!friendship) {
-      return NextResponse.json(
-        { error: "Friendship not found" },
-        { status: 404 }
-      );
-    }
-
-    const otherUserId =
-      friendship.requester_id === user.id
-        ? friendship.recipient_id
-        : friendship.requester_id;
-
-    const { error } = await supabase.rpc("remove_friend", {
-      friend_user_id: otherUserId,
-    });
-
-    if (error) {
-      console.error("Error removing friend:", error);
-      return NextResponse.json(
-        { error: error.message || "Failed to remove friend" },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error removing friend:", error);
-    return NextResponse.json(
-      { error: "Failed to remove friend" },
-      { status: 500 }
-    );
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  return NextResponse.json({ success: true });
 }

@@ -1,15 +1,14 @@
+import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getOrCreateProfile } from "@/lib/profile";
 import SignOutButton from "@/components/SignOutButton";
 
 function getSkillColor(skill: string | null): string {
   switch (skill) {
     case "I-II": return "#52B788";
-    case "III": return "#FFA94D";
-    case "III-IV": return "#FFA94D";
-    case "IV": return "#FF8C42";
-    case "IV-V": return "#FF8C42";
+    case "III": case "III-IV": return "#FFA94D";
+    case "IV": case "IV-V": return "#FF8C42";
     case "V": return "#FF6B6B";
     case "V+": return "#C62828";
     default: return "#8B8FA8";
@@ -19,10 +18,8 @@ function getSkillColor(skill: string | null): string {
 function getSkillBg(skill: string | null): string {
   switch (skill) {
     case "I-II": return "rgba(82, 183, 136, 0.15)";
-    case "III": return "rgba(255, 169, 77, 0.15)";
-    case "III-IV": return "rgba(255, 169, 77, 0.15)";
-    case "IV": return "rgba(255, 140, 66, 0.15)";
-    case "IV-V": return "rgba(255, 140, 66, 0.15)";
+    case "III": case "III-IV": return "rgba(255, 169, 77, 0.15)";
+    case "IV": case "IV-V": return "rgba(255, 140, 66, 0.15)";
     case "V": return "rgba(255, 107, 107, 0.15)";
     case "V+": return "rgba(198, 40, 40, 0.15)";
     default: return "rgba(139, 143, 168, 0.15)";
@@ -40,25 +37,13 @@ function getInitials(name: string | null): string {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const { userId } = await auth();
+  if (!userId) redirect("/login");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const profile = await getOrCreateProfile(userId);
+  if (!profile) redirect("/login");
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, skill_level, avatar_url")
-    .eq("id", user.id)
-    .single();
-
-  const displayName = profile?.display_name ?? user.email?.split("@")[0] ?? "Paddler";
-  const skillLevel = profile?.skill_level ?? null;
-  const avatarUrl = profile?.avatar_url ?? null;
+  const { displayName, skillLevel, avatarUrl } = profile;
 
   return (
     <div
@@ -69,7 +54,6 @@ export default async function DashboardPage() {
         {/* Header */}
         <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            {/* Avatar */}
             <div
               className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full text-lg font-bold text-[#0F1117]"
               style={{
@@ -88,26 +72,20 @@ export default async function DashboardPage() {
               >
                 Welcome back, {displayName}!
               </h1>
-              <div className="mt-1 flex items-center gap-2">
-                {skillLevel && (
-                  <span
-                    className="rounded-full px-2.5 py-0.5 text-xs font-semibold"
-                    style={{
-                      backgroundColor: getSkillBg(skillLevel),
-                      color: getSkillColor(skillLevel),
-                    }}
-                  >
-                    Class {skillLevel}
-                  </span>
-                )}
-                <span className="text-sm" style={{ color: "#8B8FA8" }}>
-                  {user.email}
+              {skillLevel && (
+                <span
+                  className="mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                  style={{
+                    backgroundColor: getSkillBg(skillLevel),
+                    color: getSkillColor(skillLevel),
+                  }}
+                >
+                  Class {skillLevel}
                 </span>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Sign out */}
           <SignOutButton />
         </div>
 
@@ -117,6 +95,7 @@ export default async function DashboardPage() {
             { href: "/rivers", label: "Browse Rivers", icon: "🌊" },
             { href: "/trips", label: "Find Trips", icon: "🛶" },
             { href: "/trips/new", label: "Post a Trip", icon: "+" },
+            { href: "/friends", label: "Friends", icon: "🤙" },
           ].map(({ href, label, icon }) => (
             <Link
               key={href}
