@@ -1,0 +1,56 @@
+name: RiverRats
+options:
+  bundleIdPrefix: com.riverrats
+  deploymentTarget:
+    iOS: "16.0"
+  xcodeVersion: "15"
+  generateEmptyDirectories: true
+
+packages:
+  supabase-swift:
+    url: https://github.com/supabase/supabase-swift
+    from: 2.0.0
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    ALWAYS_SEARCH_USER_PATHS: NO
+    CLANG_ENABLE_MODULES: YES
+
+targets:
+  RiverRats:
+    type: application
+    platform: iOS
+    sources:
+      - path: RiverRats
+    info:
+      path: RiverRats/Info.plist
+      properties:
+        CFBundleDisplayName: River Rats
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: false
+        SUPABASE_URL: $(SUPABASE_URL)
+        SUPABASE_ANON_KEY: $(SUPABASE_ANON_KEY)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.riverrats.app
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+          DEBUG_INFORMATION_FORMAT: dwarf
+          XCCONFIG_FILE: Secrets.xcconfig
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: ""
+          DEBUG_INFORMATION_FORMAT: dwarf-with-dsym
+          XCCONFIG_FILE: Secrets.xcconfig
+    dependencies:
+      - package: supabase-swift
+        product: Supabase
