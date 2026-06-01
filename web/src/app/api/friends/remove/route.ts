@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // POST /api/friends/remove - Remove a friend
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getSession();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   try {
     const { friendshipId } = await request.json();
@@ -22,28 +21,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the friendship to find the other user
-    const { data: friendship } = await supabase
+    const { error } = await supabase
       .from("friends")
-      .select("requester_id, recipient_id")
+      .delete()
       .eq("id", friendshipId)
-      .single();
-
-    if (!friendship) {
-      return NextResponse.json(
-        { error: "Friendship not found" },
-        { status: 404 }
-      );
-    }
-
-    const otherUserId =
-      friendship.requester_id === user.id
-        ? friendship.recipient_id
-        : friendship.requester_id;
-
-    const { error } = await supabase.rpc("remove_friend", {
-      friend_user_id: otherUserId,
-    });
+      .eq("status", "accepted")
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`);
 
     if (error) {
       console.error("Error removing friend:", error);

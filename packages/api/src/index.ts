@@ -85,8 +85,10 @@ app.get("/api/flow/:gaugeId", async (c) => {
 
 const port = Number(process.env.PORT ?? 3001);
 
-serve({ fetch: app.fetch, port }, () => {
-  console.log(`[api] River Rats API running on http://localhost:${port}`);
-});
+if (process.env.NODE_ENV !== "test") {
+  serve({ fetch: app.fetch, port }, () => {
+    console.log(`[api] River Rats API running on http://localhost:${port}`);
+  });
+}
 
 export default app;

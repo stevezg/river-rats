@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { hashPassword, createSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceClient();
 
     // Check if email already exists
     const { data: existing } = await supabase
@@ -70,11 +70,20 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError || !user) {
+      console.error("Signup insert error:", insertError);
       return NextResponse.json(
         { error: "Failed to create account" },
         { status: 500 }
       );
     }
+
+    // Also ensure a profiles row exists (trigger should handle, but belt+suspenders)
+    await supabase.from("profiles").upsert({
+      id: user.id,
+      username: candidate,
+      display_name: displayName.trim(),
+      skill_level: skillLevel,
+    });
 
     // Create session
     const sessionToken = await createSession(user.id);

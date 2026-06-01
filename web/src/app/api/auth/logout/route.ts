@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function POST() {
   try {
@@ -8,7 +8,7 @@ export async function POST() {
     const sessionToken = cookieStore.get("session_token")?.value;
 
     if (sessionToken) {
-      const supabase = await createClient();
+      const supabase = createServiceClient();
       await supabase.from("sessions").delete().eq("id", sessionToken);
     }
 

@@ -107,6 +107,7 @@ export default async function DashboardPage() {
             { href: "/rivers", label: "Browse Rivers", icon: "🌊" },
             { href: "/trips", label: "Find Trips", icon: "🛶" },
             { href: "/trips/new", label: "Post a Trip", icon: "+" },
+            { href: "/profile", label: "Edit Profile", icon: "✎" },
           ].map(({ href, label, icon }) => (
             <Link
               key={href}

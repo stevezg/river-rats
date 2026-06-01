@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function getSession() {
   const cookieStore = await cookies();
@@ -7,7 +7,7 @@ export async function getSession() {
 
   if (!sessionToken) return null;
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data: session, error } = await supabase
     .from("sessions")

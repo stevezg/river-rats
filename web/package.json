@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "NODE_ENV=test node --import tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@riverrats/shared": "*",

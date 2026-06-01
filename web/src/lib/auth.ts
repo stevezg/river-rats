@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { createClient } from "@/lib/supabase/client";
+import { createServiceClient } from "@/lib/supabase/service";
 
 const SALT_ROUNDS = 10;
 
@@ -16,9 +16,9 @@ export function generateSessionToken(): string {
 }
 
 export async function createSession(userId: string): Promise<string> {
-  const supabase = createClient();
+  const supabase = createServiceClient();
   const token = generateSessionToken();
-  
+
   const { error } = await supabase
     .from("sessions")
     .insert({
@@ -32,8 +32,8 @@ export async function createSession(userId: string): Promise<string> {
 }
 
 export async function validateSession(token: string): Promise<{ userId: string; email: string; displayName: string } | null> {
-  const supabase = createClient();
-  
+  const supabase = createServiceClient();
+
   const { data: session, error } = await supabase
     .from("sessions")
     .select("user_id, expires_at")
@@ -59,6 +59,6 @@ export async function validateSession(token: string): Promise<{ userId: string; 
 }
 
 export async function deleteSession(token: string): Promise<void> {
-  const supabase = createClient();
+  const supabase = createServiceClient();
   await supabase.from("sessions").delete().eq("id", token);
 }

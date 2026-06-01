@@ -61,10 +61,10 @@ export default async function Navbar() {
         {/* Nav Links */}
         <div className="hidden items-center gap-8 md:flex">
           {[
-            { href: "/#features", label: "Features" },
-            { href: "/rivers", label: "Rivers" },
+            { href: "/runs", label: "Runs" },
             { href: "/trips", label: "Trips" },
-            { href: "/#about", label: "About" },
+            { href: "/trips/new", label: "Create" },
+            { href: "/docs", label: "Docs" },
           ].map(({ href, label }) => (
             <Link
               key={href}
@@ -78,10 +78,10 @@ export default async function Navbar() {
           {user && <NavbarFriendsLink />}
           {user && (
             <Link
-              href="/dashboard"
+              href="/profile"
               className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white"
             >
-              Dashboard
+              Profile
             </Link>
           )}
         </div>

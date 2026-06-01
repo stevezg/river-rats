@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // POST /api/friends/accept - Accept a friend request
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getSession();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   try {
     const { friendshipId } = await request.json();
@@ -22,9 +21,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error } = await supabase.rpc("accept_friend_request", {
-      friendship_id: friendshipId,
-    });
+    const { error } = await supabase
+      .from("friends")
+      .update({ status: "accepted", updated_at: new Date().toISOString() })
+      .eq("id", friendshipId)
+      .eq("recipient_id", user.id)
+      .eq("status", "pending");
 
     if (error) {
       console.error("Error accepting friend request:", error);

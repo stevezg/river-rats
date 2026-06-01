@@ -5,7 +5,8 @@ import { getRiverBySlug } from "@/lib/rivers";
 import { riversData } from "@/lib/rivers-data";
 import { fetchDailyFlow } from "@/lib/usgs-daily";
 import { fetchFlowPercentile, getLabelColor } from "@/lib/usgs-stats";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import FlowBadge from "@/components/FlowBadge";
 import FlowSparkline from "@/components/FlowSparkline";
@@ -36,11 +37,12 @@ export default async function RiverDetailPage({ params }: Props) {
   const river = await getRiverBySlug(slug);
   if (!river) notFound();
 
-  const [dailyFlow, percentile, supabase] = await Promise.all([
+  const [dailyFlow, percentile] = await Promise.all([
     fetchDailyFlow(river.gaugeId, 7),
     fetchFlowPercentile(river.gaugeId, river.currentCfs),
-    createClient(),
   ]);
+
+  const supabase = createServiceClient();
 
   const { data: rawTrips } = await supabase
     .from("trips")
@@ -49,9 +51,7 @@ export default async function RiverDetailPage({ params }: Props) {
     .in("status", ["open", "full"])
     .order("date", { ascending: true });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSession();
 
   const relatedTrips: TripSummary[] = (rawTrips ?? []).map((t) => {
     const creator = Array.isArray(t.creator) ? t.creator[0] : t.creator;
