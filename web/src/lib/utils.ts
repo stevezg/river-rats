@@ -1,9 +1,14 @@
+import { DefaultRiverFlowPolicy } from "@riverrats/shared";
 import type { DifficultyClass, FlowTrend } from "@riverrats/shared";
+
+const riverFlowPolicy = new DefaultRiverFlowPolicy();
 
 export function getDifficultyColor(difficulty: DifficultyClass): string {
   switch (difficulty) {
     case "I-II":
       return "#52B788";
+    case "II-III":
+      return "#4ECDC4";
     case "III":
       return "#FFA94D";
     case "III-IV":
@@ -25,6 +30,8 @@ export function getDifficultyBg(difficulty: DifficultyClass): string {
   switch (difficulty) {
     case "I-II":
       return "rgba(82, 183, 136, 0.15)";
+    case "II-III":
+      return "rgba(78, 205, 196, 0.15)";
     case "III":
       return "rgba(255, 169, 77, 0.15)";
     case "III-IV":
@@ -83,14 +90,5 @@ export function getFlowStatus(
   min: number,
   max: number
 ): { label: string; color: string } {
-  if (current < min) {
-    return { label: "Too Low", color: "#5c6070" };
-  } else if (current > max) {
-    return { label: "High Water", color: "#FF6B6B" };
-  } else {
-    const pct = (current - min) / (max - min);
-    if (pct < 0.33) return { label: "Low Optimal", color: "#4ECDC4" };
-    if (pct < 0.66) return { label: "Optimal", color: "#52B788" };
-    return { label: "High Optimal", color: "#FFA94D" };
-  }
+  return riverFlowPolicy.getStatus(current, { optimalMin: min, optimalMax: max });
 }

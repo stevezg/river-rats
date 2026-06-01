@@ -1,40 +1,16 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-import { fetchFlowData, riversData } from "@riverrats/shared";
-import type { RiverStatic, FlowTrend } from "@riverrats/shared";
+import { fetchFlowData, RiverCatalog, riversData } from "@riverrats/shared";
 
 const app = new Hono();
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-interface River extends RiverStatic {
-  currentCfs: number;
-  timestamp: string;
-  trend: FlowTrend;
-  runnable: boolean;
-}
+const riverCatalog = new RiverCatalog(riversData);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function isRunnable(cfs: number, optimalMin: number, optimalMax: number): boolean {
-  return cfs >= optimalMin && cfs <= optimalMax * 1.5;
-}
-
-async function getAllRivers(): Promise<River[]> {
-  const gaugeIds = riversData.map((r) => r.gaugeId);
+async function getAllRivers() {
+  const gaugeIds = riverCatalog.getGaugeIds();
   const flowMap = await fetchFlowData(gaugeIds);
-
-  return riversData.map((r) => {
-    const flow = flowMap.get(r.gaugeId);
-    const currentCfs = flow?.cfs ?? 0;
-    return {
-      ...r,
-      currentCfs,
-      timestamp: flow?.timestamp ?? "",
-      trend: flow?.trend ?? "stable",
-      runnable: flow ? isRunnable(currentCfs, r.optimalMin, r.optimalMax) : false,
-    };
-  });
+  return riverCatalog.withFlows(flowMap);
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -48,22 +24,14 @@ app.get("/api/rivers", async (c) => {
 /** GET /api/rivers/:slug — single river with live flow data */
 app.get("/api/rivers/:slug", async (c) => {
   const { slug } = c.req.param();
-  const staticRiver = riversData.find((r) => r.slug === slug);
+  const staticRiver = riverCatalog.findBySlug(slug);
   if (!staticRiver) {
     return c.json({ error: "River not found" }, 404);
   }
 
   const flowMap = await fetchFlowData([staticRiver.gaugeId]);
   const flow = flowMap.get(staticRiver.gaugeId);
-  const currentCfs = flow?.cfs ?? 0;
-
-  const river: River = {
-    ...staticRiver,
-    currentCfs,
-    timestamp: flow?.timestamp ?? "",
-    trend: flow?.trend ?? "stable",
-    runnable: flow ? isRunnable(currentCfs, staticRiver.optimalMin, staticRiver.optimalMax) : false,
-  };
+  const river = riverCatalog.withFlow(staticRiver, flow);
 
   return c.json(river);
 });
