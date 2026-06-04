@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 import ConversationList from "@/components/ConversationList";
 import type { ConversationSummary } from "@/lib/message-types";
 
@@ -10,11 +11,10 @@ export const metadata: Metadata = {
 };
 
 export default async function MessagesPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSession();
   if (!user) redirect("/login?next=/messages");
+
+  const supabase = createServiceClient();
 
   // Fetch all conversations the user is in, with nested members + profiles
   const { data: memberRows } = await supabase

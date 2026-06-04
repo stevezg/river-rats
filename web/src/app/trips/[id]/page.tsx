@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getRiverBySlug } from "@/lib/rivers";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import FlowBadge from "@/components/FlowBadge";
@@ -15,7 +16,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data: trip } = await supabase
     .from("trips")
     .select("river_name, date, notes")
@@ -30,11 +31,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TripDetailPage({ params }: Props) {
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const [
     { data: trip },
-    { data: { user } },
+    user,
   ] = await Promise.all([
     supabase
       .from("trips")
@@ -45,7 +46,7 @@ export default async function TripDetailPage({ params }: Props) {
       )
       .eq("id", id)
       .single(),
-    supabase.auth.getUser(),
+    getSession(),
   ]);
 
   if (!trip) notFound();
@@ -109,6 +110,20 @@ export default async function TripDetailPage({ params }: Props) {
 
   const isFull = trip.spots_remaining === 0;
   const filledCount = trip.total_spots - trip.spots_remaining;
+  const crewMembers = (members ?? []).map((member) => {
+    const profile = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles;
+    return {
+      userId: member.user_id,
+      role: member.role as "creator" | "member",
+      name: (profile as { display_name?: string } | null)?.display_name ?? "Paddler",
+      skillLevel: ((profile as { skill_level?: string } | null)?.skill_level ?? "III") as DifficultyClass,
+    };
+  });
+  const memberCount = crewMembers.filter((member) => member.role !== "creator").length;
+  const crewSummary =
+    filledCount === 1
+      ? `${creatorName} is organizing. ${trip.spots_remaining} spot${trip.spots_remaining === 1 ? "" : "s"} open.`
+      : `${creatorName} plus ${memberCount} paddler${memberCount === 1 ? "" : "s"} are in.`;
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0F1117" }}>
@@ -277,7 +292,7 @@ export default async function TripDetailPage({ params }: Props) {
               </section>
             )}
 
-            {/* Participants */}
+            {/* Crew */}
             <section
               className="rounded-2xl border p-6"
               style={{
@@ -286,15 +301,18 @@ export default async function TripDetailPage({ params }: Props) {
               }}
             >
               <h2
-                className="mb-5 text-lg font-semibold text-white"
+                className="text-lg font-semibold text-white"
                 style={{ fontFamily: "var(--font-space-grotesk)" }}
               >
-                Participants ({filledCount}/{trip.total_spots})
+                Who&apos;s paddling?
               </h2>
+              <p className="mt-1 text-sm leading-6" style={{ color: "#8B8FA8" }}>
+                {crewSummary}
+              </p>
 
               {/* Progress bar */}
               <div
-                className="mb-5 h-1.5 rounded-full overflow-hidden"
+                className="mb-5 mt-5 h-1.5 rounded-full overflow-hidden"
                 style={{ backgroundColor: "rgba(255,255,255,0.06)" }}
               >
                 <div
@@ -307,55 +325,106 @@ export default async function TripDetailPage({ params }: Props) {
               </div>
 
               <div className="flex flex-col gap-3">
-                {(members ?? []).map((m, i) => {
-                  const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
-                  const name = (profile as { display_name?: string } | null)?.display_name ?? "Paddler";
-                  const isCreatorRow = m.role === "creator";
+                {crewMembers.map((member, i) => {
+                  const isCreatorRow = member.role === "creator";
                   return (
-                    <div key={m.user_id ?? i} className="flex items-center gap-3">
-                      <div
-                        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                        style={{
-                          backgroundColor: isCreatorRow ? "#4ECDC4" : "rgba(78,205,196,0.15)",
-                          color: isCreatorRow ? "#0F1117" : "#4ECDC4",
-                        }}
-                      >
-                        {name.charAt(0).toUpperCase()}
+                    <div
+                      key={member.userId ?? i}
+                      className="flex items-center justify-between gap-3 rounded-xl border p-3"
+                      style={{
+                        borderColor: "rgba(255,255,255,0.06)",
+                        backgroundColor: isCreatorRow ? "rgba(78,205,196,0.06)" : "rgba(255,255,255,0.025)",
+                      }}
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                          style={{
+                            backgroundColor: isCreatorRow ? "#4ECDC4" : "rgba(78,205,196,0.15)",
+                            color: isCreatorRow ? "#0F1117" : "#4ECDC4",
+                          }}
+                        >
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className="truncate text-sm font-medium text-white">{member.name}</span>
+                            {isCreatorRow && (
+                              <span
+                                className="rounded-full px-2 py-0.5 text-xs"
+                                style={{
+                                  backgroundColor: "rgba(78,205,196,0.12)",
+                                  color: "#4ECDC4",
+                                }}
+                              >
+                                Organizer
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-0.5 text-xs" style={{ color: "#8B8FA8" }}>
+                            Confirmed for this run
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-sm font-medium text-white">{name}</span>
-                        {isCreatorRow && (
-                          <span
-                            className="ml-2 rounded-full px-2 py-0.5 text-xs"
-                            style={{
-                              backgroundColor: "rgba(78,205,196,0.12)",
-                              color: "#4ECDC4",
-                            }}
-                          >
-                            Organizer
-                          </span>
-                        )}
-                      </div>
+                      <DifficultyBadge difficulty={member.skillLevel} size="sm" />
                     </div>
                   );
                 })}
                 {Array.from({ length: trip.spots_remaining }).map((_, i) => (
-                  <div key={`empty-${i}`} className="flex items-center gap-3">
-                    <div
-                      className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm"
-                      style={{
-                        backgroundColor: "rgba(255,255,255,0.04)",
-                        border: "1px dashed rgba(255,255,255,0.12)",
-                        color: "#5c6070",
-                      }}
-                    >
-                      +
+                  <div
+                    key={`empty-${i}`}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-dashed p-3"
+                    style={{
+                      borderColor: "rgba(255,255,255,0.12)",
+                      backgroundColor: "rgba(255,255,255,0.02)",
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-sm"
+                        style={{
+                          backgroundColor: "rgba(255,255,255,0.04)",
+                          color: "#5c6070",
+                        }}
+                      >
+                        +
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium" style={{ color: "#8B8FA8" }}>
+                          Open spot
+                        </span>
+                        <p className="mt-0.5 text-xs" style={{ color: "#5c6070" }}>
+                          Waiting for the next paddler
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-sm" style={{ color: "#5c6070" }}>
-                      Open spot
-                    </span>
+                    <DifficultyBadge difficulty={trip.min_skill as DifficultyClass} size="sm" />
                   </div>
                 ))}
+              </div>
+
+              <div
+                className="mt-5 rounded-xl border p-4"
+                style={{
+                  borderColor: "rgba(78,205,196,0.18)",
+                  backgroundColor: "rgba(78,205,196,0.06)",
+                }}
+              >
+                <p className="text-sm font-semibold text-white">Crew context</p>
+                <p className="mt-1 text-sm leading-6" style={{ color: "#8B8FA8" }}>
+                  {joinState === "member" || joinState === "creator"
+                    ? "You are in this crew. Use crew chat for shuttle timing, gear checks, and last-minute flow changes."
+                    : "Join the trip to get into crew chat and coordinate shuttle, gear, and safety details."}
+                </p>
+                {(joinState === "member" || joinState === "creator") && (
+                  <Link
+                    href={tripConvId ? `/messages/${tripConvId}` : "/messages"}
+                    className="mt-3 inline-flex min-h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold text-[#0F1117]"
+                    style={{ backgroundColor: "#4ECDC4" }}
+                  >
+                    Open crew chat
+                  </Link>
+                )}
               </div>
             </section>
 

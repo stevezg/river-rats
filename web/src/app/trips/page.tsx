@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { getRivers } from "@/lib/rivers";
 import TripsClient from "@/components/TripsClient";
 import type { TripSummary, DifficultyClass } from "@/lib/trip-types";
@@ -6,14 +7,14 @@ import type { TripSummary, DifficultyClass } from "@/lib/trip-types";
 export const revalidate = 60; // revalidate every minute
 
 export default async function TripsPage() {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const [
-    { data: { user } },
+    user,
     { data: rawTrips },
     rivers,
   ] = await Promise.all([
-    supabase.auth.getUser(),
+    getSession(),
     supabase
       .from("trips")
       .select(

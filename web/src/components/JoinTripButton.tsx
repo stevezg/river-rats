@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 
 export type JoinState =
   | "not-logged-in"
@@ -35,13 +34,15 @@ export default function JoinTripButton({
   async function handleJoin() {
     setLoading(true);
     setError("");
-    const supabase = createClient();
-    const { error: err } = await supabase
-      .from("join_requests")
-      .insert({ trip_id: tripId });
+    const res = await fetch("/api/trips/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tripId }),
+    });
+    const data = await res.json();
     setLoading(false);
-    if (err) {
-      setError(err.message);
+    if (!res.ok) {
+      setError(data.error || "Failed to join");
     } else {
       setState("pending");
     }

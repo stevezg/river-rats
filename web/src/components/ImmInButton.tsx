@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 interface Props {
   tripId: string;
@@ -12,7 +11,6 @@ interface Props {
 export default function ImmInButton({ tripId, spotsRemaining, isLoggedIn }: Props) {
   const [state, setState] = useState<"idle" | "loading" | "joined" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const supabase = createClient();
 
   if (spotsRemaining === 0) return null;
 
@@ -22,9 +20,15 @@ export default function ImmInButton({ tripId, spotsRemaining, isLoggedIn }: Prop
       return;
     }
     setState("loading");
-    const { error } = await supabase.rpc("instant_join_trip", { p_trip_id: tripId });
-    if (error) {
-      setErrorMsg(error.message.includes("Already") ? "You're already on this trip" : "Couldn't join — try again");
+    const res = await fetch("/api/trips/instant-join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tripId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const msg = data.error || "";
+      setErrorMsg(msg.includes("Already") ? "You're already on this trip" : "Couldn't join — try again");
       setState("error");
       setTimeout(() => setState("idle"), 3000);
     } else {

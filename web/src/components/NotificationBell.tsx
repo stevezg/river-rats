@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 interface Notification {
@@ -18,47 +17,31 @@ interface Notification {
 export default function NotificationBell() {
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
-  const supabase = createClient();
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      if (data) setNotifs(data);
-
-      // Realtime subscription
-      const channel = supabase
-        .channel("notifications:bell")
-        .on("postgres_changes", {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        }, (payload) => {
-          setNotifs((prev) => [payload.new as Notification, ...prev]);
-        })
-        .subscribe();
-
-      return () => { supabase.removeChannel(channel); };
+      try {
+        const res = await fetch("/api/notifications");
+        if (res.ok) {
+          const data = await res.json();
+          setNotifs(data.notifications ?? []);
+        }
+      } catch {
+        // ignore
+      }
     }
     load();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const unreadCount = notifs.filter((n) => !n.read).length;
 
   async function markAllRead() {
-    await supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("read", false);
-    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await fetch("/api/notifications", { method: "PATCH" });
+      setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    } catch {
+      // ignore
+    }
     setOpen(false);
   }
 

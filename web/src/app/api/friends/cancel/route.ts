@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // POST /api/friends/cancel - Cancel a sent friend request
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getSession();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   try {
     const { friendshipId } = await request.json();
@@ -22,9 +21,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error } = await supabase.rpc("cancel_friend_request", {
-      friendship_id: friendshipId,
-    });
+    const { error } = await supabase
+      .from("friends")
+      .delete()
+      .eq("id", friendshipId)
+      .eq("requester_id", user.id)
+      .eq("status", "pending");
 
     if (error) {
       console.error("Error canceling friend request:", error);
