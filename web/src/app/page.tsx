@@ -208,42 +208,44 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section
-        className="px-4 py-24 sm:px-6 lg:px-8"
-        style={{ background: "linear-gradient(180deg, #0F1117 0%, rgba(28,31,38,0.5) 50%, #0F1117 100%)" }}
-      >
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-16 text-center">
-            <h2 className="text-3xl font-bold text-white sm:text-4xl" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-              Built around how paddlers actually operate
-            </h2>
-            <p className="mt-3 text-lg" style={{ color: "#8B8FA8" }}>
-              Flows change fast. Your crew needs to move faster.
-            </p>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {features.map((f) => (
-              <div
-                key={f.title}
-                className="rounded-2xl border p-7 transition-all duration-200 hover:border-[rgba(78,205,196,0.20)]"
-                style={{ backgroundColor: "#1C1F26", borderColor: "rgba(255,255,255,0.06)" }}
-              >
+      {/* Features — marketing only, hide for logged-in users */}
+      {!user && (
+        <section
+          className="px-4 py-24 sm:px-6 lg:px-8"
+          style={{ background: "linear-gradient(180deg, #0F1117 0%, rgba(28,31,38,0.5) 50%, #0F1117 100%)" }}
+        >
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-16 text-center">
+              <h2 className="text-3xl font-bold text-white sm:text-4xl" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                Built around how paddlers actually operate
+              </h2>
+              <p className="mt-3 text-lg" style={{ color: "#8B8FA8" }}>
+                Flows change fast. Your crew needs to move faster.
+              </p>
+            </div>
+            <div className="grid gap-6 sm:grid-cols-3">
+              {features.map((f) => (
                 <div
-                  className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl"
-                  style={{ backgroundColor: "rgba(78, 205, 196, 0.12)", color: "#4ECDC4" }}
+                  key={f.title}
+                  className="rounded-2xl border p-7 transition-all duration-200 hover:border-[rgba(78,205,196,0.20)]"
+                  style={{ backgroundColor: "#1C1F26", borderColor: "rgba(255,255,255,0.06)" }}
                 >
-                  {f.icon}
+                  <div
+                    className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl"
+                    style={{ backgroundColor: "rgba(78, 205, 196, 0.12)", color: "#4ECDC4" }}
+                  >
+                    {f.icon}
+                  </div>
+                  <h3 className="mb-2 text-lg font-semibold text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                    {f.title}
+                  </h3>
+                  <p className="text-sm leading-relaxed" style={{ color: "#8B8FA8" }}>{f.description}</p>
                 </div>
-                <h3 className="mb-2 text-lg font-semibold text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-                  {f.title}
-                </h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#8B8FA8" }}>{f.description}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Live Rivers */}
       <section className="px-4 py-16 sm:px-6 lg:px-8">
@@ -318,84 +320,87 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* How it works */}
-      <section id="about" className="px-4 py-24 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-16 text-center">
-            <h2 className="text-3xl font-bold text-white sm:text-4xl" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-              The loop
-            </h2>
-            <p className="mt-3" style={{ color: "#8B8FA8" }}>
-              From flow spike to launch in under an hour.
-            </p>
-          </div>
-          <div className="relative grid gap-8 sm:grid-cols-3">
-            <div
-              className="absolute left-0 right-0 top-6 hidden h-px sm:block"
-              style={{ backgroundColor: "rgba(78, 205, 196, 0.15)" }}
-              aria-hidden="true"
-            />
-            {steps.map((s) => (
-              <div key={s.step} className="relative flex flex-col items-center text-center">
+      {/* How it works + CTA band — marketing only, hidden for logged-in users */}
+      {!user && (
+        <>
+          <section id="about" className="px-4 py-24 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-7xl">
+              <div className="mb-16 text-center">
+                <h2 className="text-3xl font-bold text-white sm:text-4xl" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                  The loop
+                </h2>
+                <p className="mt-3" style={{ color: "#8B8FA8" }}>
+                  From flow spike to launch in under an hour.
+                </p>
+              </div>
+              <div className="relative grid gap-8 sm:grid-cols-3">
                 <div
-                  className="relative z-10 mb-5 flex h-12 w-12 items-center justify-center rounded-full border-2 text-sm font-bold"
-                  style={{ backgroundColor: "#0F1117", borderColor: "#4ECDC4", color: "#4ECDC4", fontFamily: "var(--font-space-grotesk)" }}
-                >
-                  {s.step}
-                </div>
-                <h3 className="mb-3 text-xl font-semibold text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-                  {s.title}
-                </h3>
-                <p className="text-sm leading-relaxed" style={{ color: "#8B8FA8" }}>{s.description}</p>
+                  className="absolute left-0 right-0 top-6 hidden h-px sm:block"
+                  style={{ backgroundColor: "rgba(78, 205, 196, 0.15)" }}
+                  aria-hidden="true"
+                />
+                {steps.map((s) => (
+                  <div key={s.step} className="relative flex flex-col items-center text-center">
+                    <div
+                      className="relative z-10 mb-5 flex h-12 w-12 items-center justify-center rounded-full border-2 text-sm font-bold"
+                      style={{ backgroundColor: "#0F1117", borderColor: "#4ECDC4", color: "#4ECDC4", fontFamily: "var(--font-space-grotesk)" }}
+                    >
+                      {s.step}
+                    </div>
+                    <h3 className="mb-3 text-xl font-semibold text-white" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                      {s.title}
+                    </h3>
+                    <p className="text-sm leading-relaxed" style={{ color: "#8B8FA8" }}>{s.description}</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
+            </div>
+          </section>
 
-      {/* CTA band */}
-      <section
-        className="mx-4 mb-24 rounded-2xl px-8 py-16 text-center sm:mx-6 lg:mx-8"
-        style={{
-          background: "linear-gradient(135deg, rgba(78, 205, 196, 0.12) 0%, rgba(82, 183, 136, 0.08) 100%)",
-          border: "1px solid rgba(78, 205, 196, 0.20)",
-        }}
-      >
-        <div className="mx-auto max-w-2xl">
-          <h2 className="text-3xl font-bold text-white sm:text-4xl" style={{ fontFamily: "var(--font-space-grotesk)" }}>
-            Your next run is waiting
-          </h2>
-          <p className="mt-4 text-lg" style={{ color: "#8B8FA8" }}>
-            {rivers.length} rivers tracked. {runnableCount} running right now. The only thing missing is your crew.
-          </p>
-          <div className="mt-6 flex items-center justify-center gap-6 text-sm flex-wrap" style={{ color: "#8B8FA8" }}>
-            {["Class II beginners to Class V experts", "Free forever", "No credit card"].map((item) => (
-              <div key={item} className="flex items-center gap-1.5">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ECDC4" strokeWidth="2.5" aria-hidden="true">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                {item}
+          <section
+            className="mx-4 mb-24 rounded-2xl px-8 py-16 text-center sm:mx-6 lg:mx-8"
+            style={{
+              background: "linear-gradient(135deg, rgba(78, 205, 196, 0.12) 0%, rgba(82, 183, 136, 0.08) 100%)",
+              border: "1px solid rgba(78, 205, 196, 0.20)",
+            }}
+          >
+            <div className="mx-auto max-w-2xl">
+              <h2 className="text-3xl font-bold text-white sm:text-4xl" style={{ fontFamily: "var(--font-space-grotesk)" }}>
+                Your next run is waiting
+              </h2>
+              <p className="mt-4 text-lg" style={{ color: "#8B8FA8" }}>
+                {rivers.length} rivers tracked. {runnableCount} running right now. The only thing missing is your crew.
+              </p>
+              <div className="mt-6 flex items-center justify-center gap-6 text-sm flex-wrap" style={{ color: "#8B8FA8" }}>
+                {["Class II beginners to Class V experts", "Free forever", "No credit card"].map((item) => (
+                  <div key={item} className="flex items-center gap-1.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ECDC4" strokeWidth="2.5" aria-hidden="true">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    {item}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Link
-              href="/signup"
-              className="rounded-full px-8 py-3.5 text-base font-semibold text-[#0F1117] transition-all hover:opacity-90 hover:scale-[1.02]"
-              style={{ backgroundColor: "#4ECDC4" }}
-            >
-              Join the Community
-            </Link>
-            <Link
-              href="/rivers"
-              className="rounded-full border px-8 py-3.5 text-base font-medium transition-all hover:border-white/20"
-              style={{ borderColor: "rgba(255,255,255,0.12)", color: "#8B8FA8" }}
-            >
-              Browse Rivers
-            </Link>
-          </div>
-        </div>
-      </section>
+              <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <Link
+                  href="/signup"
+                  className="rounded-full px-8 py-3.5 text-base font-semibold text-[#0F1117] transition-all hover:opacity-90 hover:scale-[1.02]"
+                  style={{ backgroundColor: "#4ECDC4" }}
+                >
+                  Join the Community
+                </Link>
+                <Link
+                  href="/rivers"
+                  className="rounded-full border px-8 py-3.5 text-base font-medium transition-all hover:border-white/20"
+                  style={{ borderColor: "rgba(255,255,255,0.12)", color: "#8B8FA8" }}
+                >
+                  Browse Rivers
+                </Link>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }

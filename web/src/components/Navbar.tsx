@@ -73,29 +73,31 @@ export default async function Navbar() {
 
         {/* Nav Links */}
         <div className="hidden items-center gap-8 md:flex">
-          {[
-            { href: "/#features", label: "Features" },
-            { href: "/rivers", label: "Rivers" },
-            { href: "/trips", label: "Trips" },
-            { href: "/#about", label: "About" },
-          ].map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white"
-            >
-              {label}
-            </Link>
-          ))}
-          {user && <NavbarMessagesLink />}
-          {user && <NavbarFriendsLink />}
-          {user && (
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white"
-            >
-              Dashboard
-            </Link>
+          {user ? (
+            <>
+              <Link href="/trips" className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white">Trips</Link>
+              <Link href="/rivers" className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white">Rivers</Link>
+              <NavbarFriendsLink />
+              <NavbarMessagesLink />
+              <Link href="/dashboard" className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white">Dashboard</Link>
+            </>
+          ) : (
+            <>
+              {[
+                { href: "/#features", label: "Features" },
+                { href: "/rivers", label: "Rivers" },
+                { href: "/trips", label: "Trips" },
+                { href: "/#about", label: "About" },
+              ].map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="text-sm font-medium text-[#8B8FA8] transition-colors hover:text-white"
+                >
+                  {label}
+                </Link>
+              ))}
+            </>
           )}
         </div>
 

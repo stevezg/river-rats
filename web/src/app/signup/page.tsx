@@ -6,13 +6,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type SkillLevel = "I-II" | "III" | "III-IV" | "IV" | "IV-V" | "V" | "V+";
+type AuthMethod = "email" | "phone";
 
 const SKILL_LEVELS: SkillLevel[] = ["I-II", "III", "III-IV", "IV", "IV-V", "V", "V+"];
 
 function normalizePhone(raw: string): string {
-  // Strip everything except digits and the leading +
   const digits = raw.replace(/[^\d+]/g, "");
-  // If it starts with +, keep it; otherwise assume US and prepend +1
   if (digits.startsWith("+")) return digits;
   if (digits.length === 10) return `+1${digits}`;
   if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
@@ -21,6 +20,8 @@ function normalizePhone(raw: string): string {
 
 export default function SignupPage() {
   const router = useRouter();
+  const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -34,18 +35,22 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const normalizedPhone = normalizePhone(phone);
 
-    if (!normalizedPhone.startsWith("+") || normalizedPhone.length < 8) {
-      setError("Please enter a valid phone number with country code (e.g. +13035551234).");
-      setLoading(false);
-      return;
+    let signUpPayload: { email?: string; phone?: string; password: string };
+
+    if (authMethod === "phone") {
+      const normalizedPhone = normalizePhone(phone);
+      if (!normalizedPhone.startsWith("+") || normalizedPhone.length < 8) {
+        setError("Please enter a valid phone number with country code (e.g. +13035551234).");
+        setLoading(false);
+        return;
+      }
+      signUpPayload = { phone: normalizedPhone, password };
+    } else {
+      signUpPayload = { email, password };
     }
 
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      phone: normalizedPhone,
-      password,
-    });
+    const { data, error: signUpError } = await supabase.auth.signUp(signUpPayload);
 
     if (signUpError) {
       setError(signUpError.message);
@@ -60,7 +65,6 @@ export default function SignupPage() {
         .eq("id", data.user.id);
 
       if (profileError) {
-        // Non-fatal: profile update failed but auth succeeded
         console.error("Profile update error:", profileError.message);
       }
     }
@@ -75,7 +79,6 @@ export default function SignupPage() {
       style={{ backgroundColor: "#0F1117" }}
     >
       <div className="w-full max-w-md">
-        {/* Header */}
         <div className="mb-8 text-center">
           <h1
             className="mb-2 text-3xl font-bold text-white"
@@ -88,12 +91,7 @@ export default function SignupPage() {
           </p>
         </div>
 
-        {/* Card */}
-        <div
-          className="rounded-2xl p-8"
-          style={{ backgroundColor: "#1C1F26" }}
-        >
-          {/* Error */}
+        <div className="rounded-2xl p-8" style={{ backgroundColor: "#1C1F26" }}>
           {error && (
             <div
               className="mb-5 rounded-xl px-4 py-3 text-sm"
@@ -109,25 +107,17 @@ export default function SignupPage() {
 
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
-              <label
-                htmlFor="displayName"
-                className="mb-1.5 block text-sm font-medium"
-                style={{ color: "#8B8FA8" }}
-              >
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: "#8B8FA8" }}>
                 Display Name
               </label>
               <input
-                id="displayName"
                 type="text"
                 autoComplete="name"
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[#5c6070]"
-                style={{
-                  backgroundColor: "#0F1117",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
+                style={{ backgroundColor: "#0F1117", border: "1px solid rgba(255,255,255,0.1)" }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "#4ECDC4")}
                 onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
                 placeholder="River Runner"
@@ -135,22 +125,14 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label
-                htmlFor="skillLevel"
-                className="mb-1.5 block text-sm font-medium"
-                style={{ color: "#8B8FA8" }}
-              >
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: "#8B8FA8" }}>
                 Skill Level
               </label>
               <select
-                id="skillLevel"
                 value={skillLevel}
                 onChange={(e) => setSkillLevel(e.target.value as SkillLevel)}
                 className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-all appearance-none cursor-pointer"
-                style={{
-                  backgroundColor: "#0F1117",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
+                style={{ backgroundColor: "#0F1117", border: "1px solid rgba(255,255,255,0.1)" }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "#4ECDC4")}
                 onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
               >
@@ -162,45 +144,67 @@ export default function SignupPage() {
               </select>
             </div>
 
+            {/* Email / Phone toggle */}
             <div>
-              <label
-                htmlFor="phone"
-                className="mb-1.5 block text-sm font-medium"
-                style={{ color: "#8B8FA8" }}
+              <div
+                className="mb-3 flex rounded-xl p-1"
+                style={{ backgroundColor: "#0F1117", border: "1px solid rgba(255,255,255,0.08)" }}
               >
-                Phone Number
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                autoComplete="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[#5c6070]"
-                style={{
-                  backgroundColor: "#0F1117",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = "#4ECDC4")}
-                onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
-                placeholder="+1 (303) 555-1234"
-              />
-              <p className="mt-1 text-xs" style={{ color: "#5c6070" }}>
-                Include country code (e.g. +1 for US)
-              </p>
+                {(["email", "phone"] as AuthMethod[]).map((method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => { setAuthMethod(method); setError(""); }}
+                    className="flex-1 rounded-lg py-2 text-sm font-medium capitalize transition-all"
+                    style={{
+                      backgroundColor: authMethod === method ? "#4ECDC4" : "transparent",
+                      color: authMethod === method ? "#0F1117" : "#8B8FA8",
+                    }}
+                  >
+                    {method}
+                  </button>
+                ))}
+              </div>
+
+              {authMethod === "email" ? (
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[#5c6070]"
+                  style={{ backgroundColor: "#0F1117", border: "1px solid rgba(255,255,255,0.1)" }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "#4ECDC4")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+                  placeholder="you@example.com"
+                />
+              ) : (
+                <>
+                  <input
+                    type="tel"
+                    autoComplete="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[#5c6070]"
+                    style={{ backgroundColor: "#0F1117", border: "1px solid rgba(255,255,255,0.1)" }}
+                    onFocus={(e) => (e.currentTarget.style.borderColor = "#4ECDC4")}
+                    onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
+                    placeholder="+1 (303) 555-1234"
+                  />
+                  <p className="mt-1 text-xs" style={{ color: "#5c6070" }}>
+                    Include country code (e.g. +1 for US)
+                  </p>
+                </>
+              )}
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="mb-1.5 block text-sm font-medium"
-                style={{ color: "#8B8FA8" }}
-              >
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: "#8B8FA8" }}>
                 Password
               </label>
               <input
-                id="password"
                 type="password"
                 autoComplete="new-password"
                 required
@@ -208,10 +212,7 @@ export default function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full rounded-xl px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[#5c6070]"
-                style={{
-                  backgroundColor: "#0F1117",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
+                style={{ backgroundColor: "#0F1117", border: "1px solid rgba(255,255,255,0.1)" }}
                 onFocus={(e) => (e.currentTarget.style.borderColor = "#4ECDC4")}
                 onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}
                 placeholder="Minimum 6 characters"
@@ -232,14 +233,9 @@ export default function SignupPage() {
           </form>
         </div>
 
-        {/* Footer link */}
         <p className="mt-6 text-center text-sm" style={{ color: "#8B8FA8" }}>
           Already have an account?{" "}
-          <Link
-            href="/login"
-            className="font-semibold transition-colors hover:opacity-80"
-            style={{ color: "#4ECDC4" }}
-          >
+          <Link href="/login" className="font-semibold transition-colors hover:opacity-80" style={{ color: "#4ECDC4" }}>
             Sign in
           </Link>
         </p>
