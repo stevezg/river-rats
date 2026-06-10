@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CalendarDays, ChevronRight, MessageCircle, Plus, Waves } from "lucide-react";
 import { getSession } from "@/lib/auth-server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
 import { getRivers } from "@/lib/rivers";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import FlowBadge from "@/components/FlowBadge";
@@ -22,7 +22,7 @@ const betaTabs = [
 ];
 
 export default async function HomePage() {
-  const supabase = createServiceClient();
+  const supabase = await createClient();
 
   const [user, rivers, { data: recentTripsRaw }] = await Promise.all([
     getSession(),

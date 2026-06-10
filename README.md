@@ -73,7 +73,11 @@ Create `web/.env.local`:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key from supabase start output>
+SUPABASE_SERVICE_ROLE_KEY=<service role key from supabase start output>
 ```
+
+`SUPABASE_SERVICE_ROLE_KEY` is server-only. Never prefix it with
+`NEXT_PUBLIC_` or expose it to browser code.
 
 **4. Run the dev server**
 

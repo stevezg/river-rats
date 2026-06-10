@@ -1,11 +1,15 @@
 import { cookies } from "next/headers";
-import { createServiceClient } from "@/lib/supabase/service";
+import {
+  createServiceClient,
+  isServiceClientConfigured,
+} from "@/lib/supabase/service";
 
 export async function getSession() {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get("session_token")?.value;
 
   if (!sessionToken) return null;
+  if (!isServiceClientConfigured()) return null;
 
   const supabase = createServiceClient();
 

@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth-server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient } from "@/lib/supabase/server";
+import {
+  createServiceClient,
+  isServiceClientConfigured,
+} from "@/lib/supabase/service";
 import { getRiverBySlug } from "@/lib/rivers";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import FlowBadge from "@/components/FlowBadge";
@@ -16,7 +20,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const supabase = createServiceClient();
+  const supabase = await createClient();
   const { data: trip } = await supabase
     .from("trips")
     .select("river_name, date, notes")
@@ -31,7 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function TripDetailPage({ params }: Props) {
   const { id } = await params;
-  const supabase = createServiceClient();
+  const supabase = await createClient();
 
   const [
     { data: trip },
@@ -50,6 +54,9 @@ export default async function TripDetailPage({ params }: Props) {
   ]);
 
   if (!trip) notFound();
+
+  const privateSupabase =
+    user && isServiceClientConfigured() ? createServiceClient() : null;
 
   // Normalize creator (PostgREST one-to-one returns object)
   const creator = Array.isArray(trip.creator) ? trip.creator[0] : trip.creator;
@@ -76,14 +83,17 @@ export default async function TripDetailPage({ params }: Props) {
     joinState = "full";
   } else {
     // Check membership and pending request in parallel
+    if (!privateSupabase) {
+      joinState = "not-logged-in";
+    } else {
     const [{ data: memberRow }, { data: reqRow }] = await Promise.all([
-      supabase
+      privateSupabase
         .from("trip_members")
         .select("id")
         .eq("trip_id", id)
         .eq("user_id", user.id)
         .maybeSingle(),
-      supabase
+      privateSupabase
         .from("join_requests")
         .select("id, status")
         .eq("trip_id", id)
@@ -95,12 +105,16 @@ export default async function TripDetailPage({ params }: Props) {
     } else if (reqRow) {
       joinState = "pending";
     }
+    }
   }
 
   // Look up trip conversation ID for members/creators
   let tripConvId: string | null = null;
-  if (joinState === "member" || joinState === "creator") {
-    const { data: convRow } = await supabase
+  if (
+    privateSupabase &&
+    (joinState === "member" || joinState === "creator")
+  ) {
+    const { data: convRow } = await privateSupabase
       .from("conversations")
       .select("id")
       .eq("trip_id", id)

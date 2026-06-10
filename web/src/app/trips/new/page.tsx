@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth-server";
 import NewTripForm from "@/components/NewTripForm";
-
-// This route is protected by middleware — unauthenticated users are redirected to /login.
-// To customize the Supabase confirmation email template, go to:
-//   Supabase Dashboard → Authentication → Email Templates → Confirm signup
-// You can update the subject, body, and redirect URL there to match your domain.
 
 export const metadata: Metadata = {
   title: "Post a Trip | River Rats",
   description: "Post a whitewater trip and find paddling partners at your skill level.",
 };
 
-export default function NewTripPage() {
+export default async function NewTripPage() {
+  const user = await getSession();
+  if (!user) redirect("/login?next=/trips/new");
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#0F1117" }}>
       {/* Header */}
