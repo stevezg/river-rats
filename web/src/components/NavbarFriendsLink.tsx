@@ -1,13 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 import Link from "next/link";
 
 export default async function NavbarFriendsLink() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getSession();
   if (!user) return null;
+
+  const supabase = createServiceClient();
 
   // Count pending friend requests
   const { count } = await supabase

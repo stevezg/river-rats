@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 import MessageThread from "./MessageThread";
 import type { Message, ConversationDetail } from "@/lib/message-types";
 
@@ -10,7 +11,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data } = await supabase
     .from("conversations")
     .select("title, type")
@@ -21,12 +22,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function MessageThreadPage({ params }: Props) {
   const { id } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSession();
   if (!user) redirect(`/login?next=/messages/${id}`);
+
+  const supabase = createServiceClient();
 
   // Load conversation + membership check in parallel
   const [{ data: conv }, { data: memberRow }] = await Promise.all([
@@ -65,7 +64,11 @@ export default async function MessageThreadPage({ params }: Props) {
     .limit(50);
 
   // Mark conversation as read
-  await supabase.rpc("mark_conversation_read", { p_conversation_id: id });
+  await supabase
+    .from("conversation_members")
+    .update({ last_read_at: new Date().toISOString() })
+    .eq("conversation_id", id)
+    .eq("user_id", user.id);
 
   const messages: Message[] = (rawMessages ?? []).map((m) => {
     const prof = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;

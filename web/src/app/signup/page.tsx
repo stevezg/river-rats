@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 type SkillLevel = "I-II" | "III" | "III-IV" | "IV" | "IV-V" | "V" | "V+";
 type AuthMethod = "email" | "phone";
@@ -52,10 +51,11 @@ export default function SignupPage() {
 
     const { data, error: signUpError } = await supabase.auth.signUp(signUpPayload);
 
-    if (signUpError) {
-      setError(signUpError.message);
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Try again.");
       setLoading(false);
-      return;
     }
 
     if (data.user) {

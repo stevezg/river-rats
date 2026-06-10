@@ -40,10 +40,10 @@ export default function Footer() {
           {/* Nav links */}
           <div className="flex gap-6">
             {[
-              { href: "/rivers", label: "Rivers" },
+              { href: "/runs", label: "Runs" },
               { href: "/trips", label: "Trips" },
-              { href: "/#features", label: "Features" },
-              { href: "/#waitlist", label: "Waitlist" },
+              { href: "/trips/new", label: "Create" },
+              { href: "/docs", label: "Docs" },
             ].map(({ href, label }) => (
               <Link
                 key={href}

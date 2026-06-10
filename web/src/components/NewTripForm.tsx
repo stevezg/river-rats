@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { riversData } from "@riverrats/shared";
 
 const SKILL_LEVELS = ["I-II", "III", "III-IV", "IV", "IV-V", "V", "V+"] as const;
@@ -28,51 +27,29 @@ export default function NewTripForm() {
     const river = riversData.find((r) => r.slug === riverSlug);
     if (!river) { setError("Invalid river selection."); setLoading(false); return; }
 
-    const supabase = createClient();
-    const { data: { user }, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !user) { setError("You must be signed in to post a trip."); setLoading(false); return; }
-
-    const spots = parseInt(totalSpots, 10);
-
-    // Insert trip — spots_remaining starts at total_spots; the trigger will decrement
-    // when we insert the creator member row below.
-    const { data: trip, error: tripErr } = await supabase
-      .from("trips")
-      .insert({
-        creator_id: user.id,
-        river_slug: river.slug,
-        river_name: river.name,
+    const res = await fetch("/api/trips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        riverSlug,
         date,
         time,
-        meeting_point: meetingPoint,
-        total_spots: spots,
-        spots_remaining: spots,
-        min_skill: minSkill,
-        notes: notes || null,
-        status: "open",
-      })
-      .select("id")
-      .single();
+        meetingPoint,
+        totalSpots: parseInt(totalSpots, 10),
+        minSkill,
+        notes,
+      }),
+    });
 
-    if (tripErr || !trip) {
-      setError(tripErr?.message ?? "Failed to create trip.");
-      setLoading(false);
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error || "Failed to post trip.");
       return;
     }
 
-    // Insert creator as member (role = 'creator')
-    const { error: memberErr } = await supabase.from("trip_members").insert({
-      trip_id: trip.id,
-      user_id: user.id,
-      role: "creator",
-    });
-
-    if (memberErr) {
-      // Non-fatal for UX — trip was created, navigate anyway
-      console.error("trip_members insert error:", memberErr.message);
-    }
-
-    router.push(`/trips/${trip.id}`);
+    router.push(`/trips/${data.tripId}`);
   }
 
   const inputClass =

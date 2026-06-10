@@ -1,5 +1,8 @@
 {
   "name": "riverrats",
   "private": true,
-  "workspaces": ["web", "shared", "packages/*"]
+  "workspaces": ["web", "shared", "packages/*"],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present"
+  }
 }

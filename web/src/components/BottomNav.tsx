@@ -2,73 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CalendarDays, MessageCircle, Plus, UserRound, Waves } from "lucide-react";
 
 const tabs = [
-  {
-    href: "/trips",
-    label: "Feed",
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 1.8} aria-hidden="true">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-        <path d="M16 3.13a4 4 0 010 7.75"/>
-      </svg>
-    ),
-  },
-  {
-    href: "/rivers",
-    label: "Rivers",
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 1.8} aria-hidden="true">
-        <path d="M3 8c3-3 6 0 9-3s6 3 9 0"/>
-        <path d="M3 14c3-3 6 0 9-3s6 3 9 0"/>
-        <path d="M3 20c3-3 6 0 9-3s6 3 9 0"/>
-      </svg>
-    ),
-  },
-  {
-    href: "/trips/new",
-    label: "Post",
-    icon: (_active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" aria-hidden="true">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-    ),
-    isPost: true,
-  },
-  {
-    href: "/friends",
-    label: "Friends",
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 1.8} aria-hidden="true">
-        <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-        <path d="M16 3.13a4 4 0 010 7.75"/>
-      </svg>
-    ),
-  },
-  {
-    href: "/messages",
-    label: "Messages",
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 1.8} aria-hidden="true">
-        <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-      </svg>
-    ),
-  },
-  {
-    href: "/dashboard",
-    label: "Profile",
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.5 : 1.8} aria-hidden="true">
-        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-      </svg>
-    ),
-  },
+  { href: "/runs", label: "Runs", icon: Waves },
+  { href: "/trips", label: "Trips", icon: CalendarDays },
+  { href: "/trips/new", label: "Create", icon: Plus, primary: true },
+  { href: "/messages", label: "Messages", icon: MessageCircle },
+  { href: "/profile", label: "Profile", icon: UserRound },
 ];
 
 export default function BottomNav() {
@@ -87,36 +28,27 @@ export default function BottomNav() {
     >
       {tabs.map((tab) => {
         const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
-        if (tab.isPost) {
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className="flex flex-1 flex-col items-center justify-center py-3 gap-0.5"
-              aria-label="Post a Trip"
-            >
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-full"
-                style={{ backgroundColor: "#4ECDC4" }}
-              >
-                {tab.icon(false)}
-              </div>
-              <span className="text-[10px] font-medium" style={{ color: "#4ECDC4" }}>
-                {tab.label}
-              </span>
-            </Link>
-          );
-        }
+        const Icon = tab.icon;
+
         return (
           <Link
             key={tab.href}
             href={tab.href}
-            className="flex flex-1 flex-col items-center justify-center py-3 gap-0.5 transition-colors"
+            className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 py-2.5 transition-colors"
             style={{ color: isActive ? "#4ECDC4" : "#5c6070" }}
             aria-current={isActive ? "page" : undefined}
+            aria-label={tab.label}
           >
-            {tab.icon(isActive)}
-            <span className="text-[10px] font-medium">{tab.label}</span>
+            <span
+              className={
+                tab.primary
+                  ? "flex h-10 w-10 items-center justify-center rounded-full bg-[#4ECDC4] text-[#0F1117]"
+                  : "flex h-6 w-6 items-center justify-center"
+              }
+            >
+              <Icon className={tab.primary ? "h-5 w-5" : "h-5 w-5"} strokeWidth={isActive || tab.primary ? 2.4 : 1.9} aria-hidden="true" />
+            </span>
+            <span className="max-w-full truncate text-[10px] font-medium">{tab.label}</span>
           </Link>
         );
       })}

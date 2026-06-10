@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 type AuthMethod = "email" | "phone";
 
@@ -23,7 +22,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -48,15 +46,13 @@ export default function LoginPage() {
 
     const { error } = await supabase.auth.signInWithPassword(credentials);
 
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-      return;
-    }
+      const data = await res.json();
 
-    router.push("/dashboard");
-    router.refresh();
-  }
+      if (!res.ok) {
+        setError(data.error || "Login failed");
+        setLoading(false);
+        return;
+      }
 
   async function handleGoogleLogin() {
     setGoogleLoading(true);

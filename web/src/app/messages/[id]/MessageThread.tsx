@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import type { Message, ConversationDetail } from "@/lib/message-types";
 
 interface Props {
@@ -65,71 +64,12 @@ export default function MessageThread({
   const [showMembers, setShowMembers] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const supabase = createClient();
   const router = useRouter();
 
   // Scroll to bottom on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  // Realtime subscription
-  useEffect(() => {
-    const channel = supabase
-      .channel(`messages:${conversation.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversation.id}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as {
-            id: string;
-            conversation_id: string;
-            sender_id: string;
-            body: string;
-            created_at: string;
-            edited_at: string | null;
-          };
-          // Don't add own messages (already added optimistically)
-          if (newMsg.sender_id === currentUserId) return;
-
-          // Find sender name from members
-          const member = conversation.members.find(
-            (m) => m.userId === newMsg.sender_id
-          );
-          const name = member?.displayName ?? "Paddler";
-
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: newMsg.id,
-              conversationId: newMsg.conversation_id,
-              senderId: newMsg.sender_id,
-              senderName: name,
-              senderInitial: name.charAt(0).toUpperCase(),
-              body: newMsg.body,
-              createdAt: newMsg.created_at,
-              editedAt: newMsg.edited_at,
-              isOwn: false,
-            },
-          ]);
-
-          // Mark as read
-          supabase.rpc("mark_conversation_read", {
-            p_conversation_id: conversation.id,
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [conversation.id, currentUserId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const sendMessage = useCallback(async () => {
     const text = body.trim();
@@ -153,13 +93,16 @@ export default function MessageThread({
     };
     setMessages((prev) => [...prev, optimistic]);
 
-    const { error } = await supabase.from("messages").insert({
-      conversation_id: conversation.id,
-      sender_id: currentUserId,
-      body: text,
+    const res = await fetch("/api/messages/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationId: conversation.id,
+        body: text,
+      }),
     });
 
-    if (error) {
+    if (!res.ok) {
       // Remove optimistic message on failure
       setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
       setBody(text); // restore
@@ -167,7 +110,7 @@ export default function MessageThread({
 
     setSending(false);
     textareaRef.current?.focus();
-  }, [body, sending, conversation.id, currentUserId, currentUserName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [body, sending, conversation.id, currentUserId, currentUserName]);
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {

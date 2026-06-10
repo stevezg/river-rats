@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
 import SignOutButton from "@/components/SignOutButton";
 
 function getSkillColor(skill: string | null): string {
@@ -40,11 +40,7 @@ function getInitials(name: string | null): string {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSession();
 
   if (!user) {
     redirect("/login");
@@ -117,6 +113,7 @@ export default async function DashboardPage() {
             { href: "/rivers", label: "Browse Rivers", icon: "🌊" },
             { href: "/trips", label: "Find Trips", icon: "🛶" },
             { href: "/trips/new", label: "Post a Trip", icon: "+" },
+            { href: "/profile", label: "Edit Profile", icon: "✎" },
           ].map(({ href, label, icon }) => (
             <Link
               key={href}

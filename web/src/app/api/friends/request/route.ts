@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getSession } from "@/lib/auth-server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // POST /api/friends/request - Send a friend request
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const user = await getSession();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const supabase = createServiceClient();
 
   try {
     const { recipientId } = await request.json();
@@ -22,10 +21,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use the RPC function to send the friend request
-    const { data, error } = await supabase.rpc("send_friend_request", {
-      other_user_id: recipientId,
-    });
+    if (user.id === recipientId) {
+      return NextResponse.json(
+        { error: "Cannot friend yourself" },
+        { status: 400 }
+      );
+    }
+
+    // Check if friendship already exists in either direction
+    const { data: existing } = await supabase
+      .from("friends")
+      .select("id")
+      .or(
+        `and(requester_id.eq.${user.id},recipient_id.eq.${recipientId}),and(requester_id.eq.${recipientId},recipient_id.eq.${user.id})`
+      )
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json(
+        { error: "Friendship already exists" },
+        { status: 409 }
+      );
+    }
+
+    const { data, error } = await supabase
+      .from("friends")
+      .insert({
+        requester_id: user.id,
+        recipient_id: recipientId,
+        status: "pending",
+      })
+      .select("id")
+      .single();
 
     if (error) {
       console.error("Error sending friend request:", error);
@@ -35,7 +62,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, friendshipId: data });
+    return NextResponse.json({ success: true, friendshipId: data?.id });
   } catch (error) {
     console.error("Error sending friend request:", error);
     return NextResponse.json(
