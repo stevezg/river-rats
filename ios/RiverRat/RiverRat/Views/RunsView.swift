@@ -146,7 +146,9 @@ private struct RunRow: View {
     }
 }
 
-#Preview {
-    RunsView()
-        .environmentObject(OfflineStore())
+struct RunsView_Previews: PreviewProvider {
+    static var previews: some View {
+        RunsView()
+            .environmentObject(OfflineStore())
+    }
 }

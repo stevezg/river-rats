@@ -54,7 +54,9 @@ private struct MessageRow: View {
     }
 }
 
-#Preview {
-    MessagesView()
-        .environmentObject(OfflineStore())
+struct MessagesView_Previews: PreviewProvider {
+    static var previews: some View {
+        MessagesView()
+            .environmentObject(OfflineStore())
+    }
 }

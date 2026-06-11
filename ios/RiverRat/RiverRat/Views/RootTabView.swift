@@ -32,7 +32,9 @@ struct RootTabView: View {
     }
 }
 
-#Preview {
-    RootTabView()
-        .environmentObject(OfflineStore())
+struct RootTabView_Previews: PreviewProvider {
+    static var previews: some View {
+        RootTabView()
+            .environmentObject(OfflineStore())
+    }
 }

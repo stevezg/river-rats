@@ -89,8 +89,10 @@ private struct DetailMetric: View {
     }
 }
 
-#Preview {
-    NavigationStack {
-        RunDetailView(run: SampleData.runs[0])
+struct RunDetailView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationStack {
+            RunDetailView(run: SampleData.runs[0])
+        }
     }
 }

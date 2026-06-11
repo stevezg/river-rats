@@ -78,7 +78,9 @@ struct CreateTripView: View {
     }
 }
 
-#Preview {
-    CreateTripView()
-        .environmentObject(OfflineStore())
+struct CreateTripView_Previews: PreviewProvider {
+    static var previews: some View {
+        CreateTripView()
+            .environmentObject(OfflineStore())
+    }
 }

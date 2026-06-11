@@ -68,7 +68,9 @@ private struct ReadinessRow: View {
     }
 }
 
-#Preview {
-    ProfileView()
-        .environmentObject(OfflineStore())
+struct ProfileView_Previews: PreviewProvider {
+    static var previews: some View {
+        ProfileView()
+            .environmentObject(OfflineStore())
+    }
 }

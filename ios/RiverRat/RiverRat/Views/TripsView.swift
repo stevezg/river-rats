@@ -165,7 +165,9 @@ private struct CrewRow: View {
     }
 }
 
-#Preview {
-    TripsView()
-        .environmentObject(OfflineStore())
+struct TripsView_Previews: PreviewProvider {
+    static var previews: some View {
+        TripsView()
+            .environmentObject(OfflineStore())
+    }
 }
