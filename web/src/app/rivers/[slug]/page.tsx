@@ -6,7 +6,7 @@ import { riversData } from "@/lib/rivers-data";
 import { fetchDailyFlow } from "@/lib/usgs-daily";
 import { fetchFlowPercentile, getLabelColor } from "@/lib/usgs-stats";
 import { getSession } from "@/lib/auth-server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { createPublicClient } from "@/lib/supabase/public";
 import DifficultyBadge from "@/components/DifficultyBadge";
 import FlowBadge from "@/components/FlowBadge";
 import FlowSparkline from "@/components/FlowSparkline";
@@ -42,7 +42,7 @@ export default async function RiverDetailPage({ params }: Props) {
     fetchFlowPercentile(river.gaugeId, river.currentCfs),
   ]);
 
-  const supabase = createServiceClient();
+  const supabase = createPublicClient();
 
   const { data: rawTrips } = await supabase
     .from("trips")
