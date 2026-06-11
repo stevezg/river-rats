@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { CalendarDays, MessageCircle, Plus, UserRound, Waves } from "lucide-react";
 
 const tabs = [
-  { href: "/runs", label: "Runs", icon: Waves },
+  { href: "/rivers", label: "Rivers", icon: Waves },
   { href: "/trips", label: "Trips", icon: CalendarDays },
   { href: "/trips/new", label: "Create", icon: Plus, primary: true },
   { href: "/messages", label: "Messages", icon: MessageCircle },
