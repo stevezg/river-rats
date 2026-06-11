@@ -61,7 +61,7 @@ export default async function Navbar() {
         {/* Nav Links */}
         <div className="hidden items-center gap-8 md:flex">
           {[
-            { href: "/runs", label: "Runs" },
+            { href: "/rivers", label: "Rivers" },
             { href: "/trips", label: "Trips" },
             { href: "/trips/new", label: "Create" },
             { href: "/docs", label: "Docs" },

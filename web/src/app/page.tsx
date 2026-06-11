@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 const betaTabs = [
-  { href: "/runs", label: "Runs", icon: Waves },
+  { href: "/rivers", label: "Rivers", icon: Waves },
   { href: "/trips", label: "Trips", icon: CalendarDays },
   { href: "/trips/new", label: "Create", icon: Plus },
   { href: "/messages", label: "Messages", icon: MessageCircle },
@@ -146,11 +146,11 @@ export default async function HomePage() {
           <div>
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-white">Runs</h2>
+                <h2 className="text-2xl font-bold text-white">Rivers</h2>
                 <p className="mt-1 text-sm text-[#8B8FA8]">Colorado gauges that matter today.</p>
               </div>
-              <Link href="/runs" className="inline-flex items-center gap-1 text-sm font-semibold text-[#4ECDC4]">
-                All runs
+              <Link href="/rivers" className="inline-flex items-center gap-1 text-sm font-semibold text-[#4ECDC4]">
+                All rivers
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </Link>
             </div>
