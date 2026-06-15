@@ -21,8 +21,7 @@ function isRunnable(cfs: number, optimalMin: number, optimalMax: number): boolea
 }
 
 async function getAllRivers(): Promise<River[]> {
-  const gaugeIds = riversData.map((r) => r.gaugeId);
-  const flowMap = await fetchFlowData(gaugeIds);
+  const flowMap = await fetchFlowData(riversData);
 
   return riversData.map((r) => {
     const flow = flowMap.get(r.gaugeId);
@@ -53,7 +52,7 @@ app.get("/api/rivers/:slug", async (c) => {
     return c.json({ error: "River not found" }, 404);
   }
 
-  const flowMap = await fetchFlowData([staticRiver.gaugeId]);
+  const flowMap = await fetchFlowData([staticRiver]);
   const flow = flowMap.get(staticRiver.gaugeId);
   const currentCfs = flow?.cfs ?? 0;
 

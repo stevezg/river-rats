@@ -65,3 +65,50 @@ test("fetchFlowData degrades to an empty map when the USGS request fails", async
 
   assert.equal(flows.size, 0);
 });
+
+test("fetchFlowData reads American Whitewater-backed non-USGS gauges", async () => {
+  globalThis.fetch = async (url, init) => {
+    assert.match(String(url), /trpc-api\.americanwhitewater\.org\/reach\/reachDetail/);
+    assert.match(String(url), /unit-reach/);
+    assert.equal((init?.headers as Record<string, string>)["X-Requested-With"], "XMLHttpRequest");
+
+    return new Response(
+      JSON.stringify({
+        result: {
+          data: {
+            json: {
+              detail: {
+                correlations: [
+                  {
+                    isPrimary: true,
+                    status: {
+                      latestReading: {
+                        value: "754",
+                        dateTime: "2026-06-15T19:45:00.000Z",
+                      },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  };
+
+  const flows = await fetchFlowData([
+    {
+      gaugeId: "unit-cdec-gauge",
+      gaugeSource: "CDEC",
+      awReachId: "unit-reach",
+    },
+  ]);
+
+  assert.deepEqual(flows.get("unit-cdec-gauge"), {
+    cfs: 754,
+    timestamp: "2026-06-15T19:45:00.000Z",
+    trend: "stable",
+  });
+});

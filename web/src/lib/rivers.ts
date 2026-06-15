@@ -18,12 +18,11 @@ function isRunnable(cfs: number, optimalMin: number, optimalMax: number): boolea
 }
 
 /**
- * Returns all rivers with live USGS flow data merged in.
+ * Returns all rivers with live flow data merged in.
  * Falls back to cfs=0 / trend="stable" / runnable=false when a gauge fetch fails.
  */
 export async function getRivers(): Promise<River[]> {
-  const gaugeIds = riversData.map((r) => r.gaugeId);
-  const flowMap = await fetchFlowData(gaugeIds);
+  const flowMap = await fetchFlowData(riversData);
 
   return riversData.map((r) => {
     const flow = flowMap.get(r.gaugeId);
@@ -46,7 +45,7 @@ export async function getRiverBySlug(slug: string): Promise<River | null> {
   const staticRiver = riversData.find((r) => r.slug === slug);
   if (!staticRiver) return null;
 
-  const flowMap = await fetchFlowData([staticRiver.gaugeId]);
+  const flowMap = await fetchFlowData([staticRiver]);
   const flow = flowMap.get(staticRiver.gaugeId);
   const currentCfs = flow?.cfs ?? 0;
 
