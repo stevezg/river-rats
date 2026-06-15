@@ -13,22 +13,32 @@ export interface FlowData {
   tempC?: number;
 }
 
+export interface FlowGauge {
+  gaugeId: string;
+  gaugeSource?: string;
+  awReachId?: string;
+}
+
 // Simple in-memory cache with TTL — prevents hammering the USGS API
 const flowCache = new Map<string, { data: FlowData; expiresAt: number }>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
-function getCached(gaugeId: string): FlowData | null {
-  const entry = flowCache.get(gaugeId);
+function gaugeCacheKey(gauge: FlowGauge): string {
+  return `${gauge.gaugeSource ?? "USGS"}:${gauge.gaugeId}`;
+}
+
+function getCached(gauge: FlowGauge): FlowData | null {
+  const entry = flowCache.get(gaugeCacheKey(gauge));
   if (!entry) return null;
   if (Date.now() > entry.expiresAt) {
-    flowCache.delete(gaugeId);
+    flowCache.delete(gaugeCacheKey(gauge));
     return null;
   }
   return entry.data;
 }
 
-function setCached(gaugeId: string, data: FlowData): void {
-  flowCache.set(gaugeId, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+function setCached(gauge: FlowGauge, data: FlowData): void {
+  flowCache.set(gaugeCacheKey(gauge), { data, expiresAt: Date.now() + CACHE_TTL_MS });
 }
 
 function determineTrend(
@@ -65,6 +75,90 @@ interface USGSResponse {
   };
 }
 
+interface AmericanWhitewaterReachResponse {
+  result?: {
+    data?: {
+      json?: {
+        detail?: {
+          correlations?: Array<{
+            isPrimary?: boolean;
+            gaugeInfo?: {
+              gaugeSource?: string;
+              gaugeSourceIdentifier?: string;
+            };
+            status?: {
+              latestReading?: {
+                value?: string | number;
+                dateTime?: string;
+              };
+            };
+          }>;
+        };
+        primaryGaugeStatus?: {
+          latestReading?: {
+            value?: string | number;
+            dateTime?: string;
+          };
+        };
+      };
+    };
+  };
+}
+
+function normalizeGauge(gauge: string | FlowGauge): FlowGauge {
+  return typeof gauge === "string" ? { gaugeId: gauge, gaugeSource: "USGS" } : gauge;
+}
+
+function parseAmericanWhitewaterReading(
+  body: AmericanWhitewaterReachResponse,
+  gauge: FlowGauge
+): FlowData | null {
+  const reach = body.result?.data?.json;
+  const correlation =
+    reach?.detail?.correlations?.find((entry) => entry.isPrimary) ??
+    reach?.detail?.correlations?.[0];
+  const latest = correlation?.status?.latestReading ?? reach?.primaryGaugeStatus?.latestReading;
+
+  const cfs = Number(latest?.value);
+  if (!Number.isFinite(cfs) || cfs < 0 || !latest?.dateTime) return null;
+
+  return {
+    cfs,
+    timestamp: latest.dateTime,
+    trend: "stable",
+  };
+}
+
+async function fetchAmericanWhitewaterGauge(gauge: FlowGauge): Promise<FlowData | null> {
+  if (!gauge.awReachId) return null;
+
+  const input = encodeURIComponent(JSON.stringify({ json: { reachID: gauge.awReachId } }));
+  const url = `https://trpc-api.americanwhitewater.org/reach/reachDetail?input=${input}`;
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      // @ts-ignore
+      next: { revalidate: 300 },
+    });
+
+    if (!response.ok) {
+      throw new Error(`American Whitewater API responded with ${response.status} ${response.statusText}`);
+    }
+
+    const body: AmericanWhitewaterReachResponse = await response.json();
+    const flowData = parseAmericanWhitewaterReading(body, gauge);
+    if (flowData) setCached(gauge, flowData);
+    return flowData;
+  } catch (error) {
+    console.error("[AW] Failed to fetch flow data:", error);
+    return null;
+  }
+}
+
 /**
  * Fetch live discharge (CFS) data for one or more USGS gauges.
  * Results are cached in-memory for 5 minutes per gauge.
@@ -73,23 +167,34 @@ interface USGSResponse {
  * @returns Map from gauge ID to FlowData. Gauges that fail or have no data are omitted.
  */
 export async function fetchFlowData(
-  gaugeIds: string[]
+  gauges: Array<string | FlowGauge>
 ): Promise<Map<string, FlowData>> {
   const result = new Map<string, FlowData>();
-  const uncachedIds: string[] = [];
+  const uncachedUSGSGauges: FlowGauge[] = [];
+  const uncachedAWGauges: FlowGauge[] = [];
 
-  for (const id of gaugeIds) {
-    const cached = getCached(id);
+  for (const rawGauge of gauges) {
+    const gauge = normalizeGauge(rawGauge);
+    const cached = getCached(gauge);
     if (cached) {
-      result.set(id, cached);
+      result.set(gauge.gaugeId, cached);
+    } else if ((gauge.gaugeSource ?? "USGS") === "USGS") {
+      uncachedUSGSGauges.push(gauge);
     } else {
-      uncachedIds.push(id);
+      uncachedAWGauges.push(gauge);
     }
   }
 
-  if (uncachedIds.length === 0) return result;
+  await Promise.all(
+    uncachedAWGauges.map(async (gauge) => {
+      const flowData = await fetchAmericanWhitewaterGauge(gauge);
+      if (flowData) result.set(gauge.gaugeId, flowData);
+    })
+  );
 
-  const sitesParam = uncachedIds.join(",");
+  if (uncachedUSGSGauges.length === 0) return result;
+
+  const sitesParam = Array.from(new Set(uncachedUSGSGauges.map((gauge) => gauge.gaugeId))).join(",");
   const url = `https://waterservices.usgs.gov/nwis/iv/?format=json&sites=${sitesParam}&parameterCd=00060,00010&siteStatus=active`;
 
   try {
@@ -150,7 +255,7 @@ export async function fetchFlowData(
         trend: determineTrend(entry.cfsValues),
         ...(entry.tempC !== undefined ? { tempC: entry.tempC } : {}),
       };
-      setCached(gaugeId, flowData);
+      setCached({ gaugeId, gaugeSource: "USGS" }, flowData);
       result.set(gaugeId, flowData);
     }
   } catch (error) {
